@@ -1,5 +1,5 @@
 <template>
-  <auth-card title="Crear Cuenta">
+  <auth-card title="Registrar">
     <n-form :model="formData" :rules="rules" ref="formRef">
       <n-form-item label="Email" path="email">
         <n-input
@@ -28,7 +28,7 @@
       </n-form-item>
 
       <n-button type="primary" block secondary strong @click="handleRegister">
-        Crear Cuenta
+        Registrar
       </n-button>
 
       <div class="text-center mt-4">
@@ -42,7 +42,7 @@
 
 <script>
 import AuthCard from "@/components/AuthCard.vue";
-import AuthService from "@/services/authenticationService";
+import AuthService from "@/services/authService";
 import { useMessage } from "naive-ui";
 import { useRouter } from "vue-router";
 
@@ -105,13 +105,11 @@ export default {
           this.message.success(
             responseMessage || "¡Registro exitoso! Por favor inicia sesión."
           );
-          console.log("Usuario registrado:", user);
           this.$router.push("/login");
         } else {
           throw new Error("Error al crear el usuario");
         }
       } catch (error) {
-        console.error("Error de registro:", error);
         this.message.error(
           error.response?.data?.error ||
             error.message ||

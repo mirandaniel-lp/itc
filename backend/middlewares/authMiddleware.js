@@ -13,7 +13,7 @@ export const authenticate = (req, res, next) => {
   }
 };
 
-export const authorizeRole = (roleId) => (req, res, next) => {
+export const authorizeRole = (roleId) => (req, res, next) => {  
   if (req.user.roleId !== roleId) {
     return res.status(403).json({ error: "No tienes permisos" });
   }

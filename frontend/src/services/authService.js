@@ -45,9 +45,23 @@ class AuthenticationService {
     }
   }
 
-  logout() {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+  async getUser() {
+    try {
+      const response = await apiClient.get("/user");
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async logout() {
+    try {
+      const response = await apiClient.post("/logout");
+      localStorage.removeItem("token");
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
   }
 
   getCurrentUser() {

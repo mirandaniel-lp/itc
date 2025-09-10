@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen flex items-center justify-center p-4 bg-gray-50">
     <n-card
-      class="w-[380px] rounded-3xl shadow-lg transform transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] bg-white/80 backdrop-blur-sm"
+      class="w-[380px] rounded-3xl shadow-lg transform transition-all duration-300 bg-white/80 backdrop-blur-sm"
     >
       <div class="text-center space-y-3">
         <div class="animate-fadeIn">

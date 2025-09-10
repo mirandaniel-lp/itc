@@ -32,7 +32,7 @@
 
 <script>
 import AuthCard from "@/components/AuthCard.vue";
-import AuthService from "@/services/authenticationService";
+import AuthService from "@/services/authService";
 import { useMessage } from "naive-ui";
 import { useRouter } from "vue-router";
 

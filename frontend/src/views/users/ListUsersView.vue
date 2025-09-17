@@ -1,50 +1,39 @@
 <template>
   <app-layout>
-    <div class="min-h-screen">
+    <div class="min-h-screen p-4">
       <n-card title="Usuarios">
-        <n-table :bordered="false" :striped="true">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Email</th>
-              <th>Rol</th>
-              <th>Fecha</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="user in users" :key="user.id">
-              <td>{{ user.id }}</td>
-              <td>{{ user.email }}</td>
-              <td>
-                <n-tag type="info" size="small">{{ user.role.name }}</n-tag>
-              </td>
-              <td>{{ new Date(user.created_at).toLocaleDateString() }}</td>
-              <td>
-                <n-button
-                  text
-                  type="primary"
-                  @click="$router.push(`/users/${user.id}/edit`)"
-                >
-                  <n-icon><PencilOutline /></n-icon>
-                </n-button>
+        <div class="mb-4 flex flex-wrap justify-between items-center gap-2">
+          <n-input
+            v-model:value="search"
+            placeholder="Buscar por email o rol"
+            clearable
+            @input="handleSearch"
+            style="max-width: 300px"
+          />
+          <n-button type="primary" @click="$router.push('/users/create')">
+            + Nuevo Usuario
+          </n-button>
+        </div>
 
-                <n-popconfirm
-                  @positive-click="eliminar(user.id)"
-                  positive-text="Sí"
-                  negative-text="No"
-                >
-                  <template #trigger>
-                    <n-button text type="error">
-                      <n-icon><TrashOutline /></n-icon>
-                    </n-button>
-                  </template>
-                  ¿Eliminar este usuario?
-                </n-popconfirm>
-              </td>
-            </tr>
-          </tbody>
-        </n-table>
+        <div class="overflow-x-auto">
+          <n-data-table
+            :loading="loading"
+            :columns="columns"
+            :data="paginatedData"
+            :pagination="false"
+            :bordered="false"
+            :striped="true"
+          />
+        </div>
+
+        <div class="flex justify-end mt-4">
+          <n-pagination
+            v-model:page="currentPage"
+            :page-size="itemsPerPage"
+            :item-count="filteredUsers.length"
+            show-quick-jumper
+          />
+        </div>
       </n-card>
     </div>
   </app-layout>
@@ -53,51 +42,126 @@
 <script>
 import {
   NCard,
-  NTable,
+  NDataTable,
   NButton,
-  NTag,
-  NIcon,
-  NPopconfirm,
+  NInput,
+  NPagination,
   useMessage,
 } from "naive-ui";
+import { NTag, NIcon, NPopconfirm } from "naive-ui";
 import { PencilOutline, TrashOutline } from "@vicons/ionicons5";
 import AppLayout from "@/layouts/AppLayout.vue";
 import UserService from "@/services/userService";
+import { h } from "vue";
 
 export default {
   name: "ListUsersView",
   components: {
     AppLayout,
     NCard,
-    NTable,
+    NDataTable,
     NButton,
-    NTag,
-    NIcon,
-    NPopconfirm,
-    PencilOutline,
-    TrashOutline,
+    NInput,
+    NPagination,
   },
   data() {
     return {
       users: [],
+      filteredUsers: [],
+      search: "",
+      currentPage: 1,
+      itemsPerPage: 10,
       loading: false,
-      message: null, // ✅ Aquí guardamos useMessage()
+      message: null,
+      columns: [
+        { title: "#", key: "id", width: 60 },
+        { title: "Email", key: "email" },
+        {
+          title: "Rol",
+          key: "role",
+          render: (row) =>
+            h(
+              NTag,
+              { type: "info", size: "small" },
+              { default: () => row.role?.name || "-" }
+            ),
+        },
+        {
+          title: "Fecha",
+          key: "created_at",
+          render: (row) => new Date(row.created_at).toLocaleDateString("es-BO"),
+        },
+        {
+          title: "Acciones",
+          key: "actions",
+          render: (row) =>
+            h("div", { class: "flex gap-2" }, [
+              h(
+                "button",
+                {
+                  class: "n-button n-button--primary n-button--small",
+                  onClick: () => this.$router.push(`/users/${row.id}/edit`),
+                },
+                [h(NIcon, null, { default: () => h(PencilOutline) }), " Editar"]
+              ),
+              h(
+                NPopconfirm,
+                {
+                  "onPositive-click": () => this.eliminar(row.id),
+                  "positive-text": "Sí",
+                  "negative-text": "No",
+                },
+                {
+                  trigger: () =>
+                    h(
+                      "button",
+                      {
+                        class: "n-button n-button--error n-button--small",
+                      },
+                      [
+                        h(NIcon, null, { default: () => h(TrashOutline) }),
+                        " Eliminar",
+                      ]
+                    ),
+                  default: () => "¿Eliminar este usuario?",
+                }
+              ),
+            ]),
+        },
+      ],
     };
+  },
+  computed: {
+    paginatedData() {
+      const start = (this.currentPage - 1) * this.itemsPerPage;
+      return this.filteredUsers.slice(start, start + this.itemsPerPage);
+    },
   },
   methods: {
     async fetchUsers() {
       this.loading = true;
       try {
-        this.users = await UserService.getUsers();
+        const data = await UserService.getUsers();
+        this.users = data;
+        this.filteredUsers = [...data];
       } catch (err) {
         this.message.error("Error al cargar usuarios.");
       } finally {
         this.loading = false;
       }
     },
+    handleSearch() {
+      const query = this.search.toLowerCase();
+      this.filteredUsers = this.users.filter((user) => {
+        const email = user.email?.toLowerCase() || "";
+        const role = user.role?.name?.toLowerCase() || "";
+        return email.includes(query) || role.includes(query);
+      });
+      this.currentPage = 1;
+    },
     async eliminar(id) {
       try {
-        await UserService.deleteUser(id); // ✅ Esto hace soft-delete
+        await UserService.deleteUser(id);
         this.message.success("Usuario eliminado.");
         await this.fetchUsers();
       } catch (err) {
@@ -111,3 +175,5 @@ export default {
   },
 };
 </script>
+
+<style scoped></style>

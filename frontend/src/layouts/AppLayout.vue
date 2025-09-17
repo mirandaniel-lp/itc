@@ -79,18 +79,14 @@
           @select="onUserSelect"
           trigger="click"
         >
-          <div class="flex items-center gap-2 cursor-pointer select-none">
-            <n-avatar size="small" round>
-              <n-icon><PersonCircleOutline /></n-icon>
-            </n-avatar>
-            <div class="hidden sm:block text-sm">
-              <div class="leading-4 font-medium">
-                {{ loadingUser ? "Cargando..." : user?.email || "Usuario" }}
-              </div>
-              <div class="text-xs text-gray-500 leading-4">
-                {{ user?.role?.name || "Rol" }}
-              </div>
-            </div>
+          <div
+            class="cursor-pointer px-2 py-1 flex items-center gap-2 hover:bg-gray-100 rounded"
+          >
+            <n-icon size="20"><PersonCircleOutline /></n-icon>
+            <span class="text-sm font-medium hidden sm:inline">
+              {{ loadingUser ? "Cargando..." : user?.email || "Usuario" }}
+            </span>
+            <n-icon size="16" class="text-gray-500"><ChevronDown /></n-icon>
           </div>
         </n-dropdown>
       </n-layout-header>
@@ -112,7 +108,6 @@ import {
   NIcon,
   NButton,
   NDropdown,
-  NAvatar,
   NBreadcrumb,
   NBreadcrumbItem,
   NDrawer,
@@ -126,6 +121,7 @@ import {
   HomeOutline,
   PersonCircleOutline,
   LogOutOutline,
+  ChevronDown,
 } from "@vicons/ionicons5";
 
 export default {
@@ -139,12 +135,13 @@ export default {
     NIcon,
     NButton,
     NDropdown,
-    NAvatar,
     NBreadcrumb,
     NBreadcrumbItem,
     NDrawer,
     NDrawerContent,
     MenuIcon,
+    PersonCircleOutline,
+    ChevronDown,
   },
   setup() {
     const router = useRouter();
@@ -193,7 +190,7 @@ export default {
         icon: renderIcon(PersonCircleOutline),
         children: [
           {
-            label: "Listado",
+            label: "Lista de Estudiantes",
             key: "/students",
           },
           {
@@ -284,10 +281,7 @@ export default {
 };
 
 function renderIcon(icon) {
-  return () =>
-    h(NIcon, null, {
-      default: () => h(icon),
-    });
+  return () => h("span", [h(NIcon, null, { default: () => h(icon) })]);
 }
 </script>
 

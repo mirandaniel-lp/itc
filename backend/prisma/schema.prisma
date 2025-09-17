@@ -42,7 +42,7 @@ model Student {
   placeofbirth     String?  @db.VarChar(200)
   phone            String   @db.VarChar(10)
   gender           Gender
-  status           Int
+  status Boolean   @default(true)
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt
 }

@@ -1,67 +1,38 @@
 <template>
   <app-layout>
-    <div class="min-h-screen">
+    <div class="min-h-screen p-4">
       <n-card title="Estudiantes" size="large">
-        <n-table :bordered="false" :striped="true">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Nombre Completo</th>
-              <th>CI</th>
-              <th>Teléfono</th>
-              <th>Género</th>
-              <th>Fecha Nac.</th>
-              <th>Imagen</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="student in students" :key="student.id">
-              <td>{{ student.id }}</td>
-              <td>
-                {{ student.name }} {{ student.last_name }}
-                {{ student.second_last_name }}
-              </td>
-              <td>{{ student.ci || "-" }}</td>
-              <td>{{ student.phone }}</td>
-              <td>{{ student.gender }}</td>
-              <td>{{ new Date(student.dateofbirth).toLocaleDateString() }}</td>
-              <td>
-                <img
-                  v-if="student.image"
-                  :src="`http://localhost:3000${student.image}`"
-                  alt="foto"
-                  class="w-12 h-12 object-cover rounded-full border"
-                />
-                <span v-else>-</span>
-              </td>
-              <td>
-                <n-space>
-                  <n-button
-                    size="small"
-                    @click="$router.push(`/students/${student.id}/edit`)"
-                  >
-                    Editar
-                  </n-button>
-                  <n-popconfirm
-                    @positive-click="eliminar(student.id)"
-                    positive-text="Sí"
-                    negative-text="No"
-                  >
-                    <template #trigger>
-                      <n-button size="small" type="error">Eliminar</n-button>
-                    </template>
-                    ¿Eliminar este estudiante?
-                  </n-popconfirm>
-                </n-space>
-              </td>
-            </tr>
-          </tbody>
-        </n-table>
-        <div class="mt-4">
+        <div class="mb-4 flex flex-wrap justify-between items-center gap-2">
+          <n-input
+            v-model:value="search"
+            placeholder="Buscar por nombre o CI"
+            clearable
+            @input="handleSearch"
+            style="max-width: 300px"
+          />
           <n-button type="primary" @click="$router.push('/students/create')">
-            + Nuevo Estudiante
+            + Nuevo
           </n-button>
+        </div>
+
+        <div class="overflow-x-auto">
+          <n-data-table
+            :loading="isLoading"
+            :columns="columns"
+            :data="paginatedData"
+            :pagination="false"
+            :bordered="false"
+            :striped="true"
+          />
+        </div>
+
+        <div class="flex justify-end mt-4">
+          <n-pagination
+            v-model:page="currentPage"
+            :page-size="itemsPerPage"
+            :item-count="filteredStudents.length"
+            show-quick-jumper
+          />
         </div>
       </n-card>
     </div>
@@ -71,12 +42,16 @@
 <script>
 import {
   NCard,
-  NTable,
+  NDataTable,
   NButton,
-  NPopconfirm,
-  NSpace,
+  NInput,
+  NPagination,
   useMessage,
 } from "naive-ui";
+import { NIcon, NPopconfirm } from "naive-ui";
+import { PencilOutline, TrashOutline } from "@vicons/ionicons5";
+import { h } from "vue";
+
 import AppLayout from "@/layouts/AppLayout.vue";
 import StudentService from "@/services/studentService";
 
@@ -85,32 +60,122 @@ export default {
   components: {
     AppLayout,
     NCard,
-    NTable,
+    NDataTable,
     NButton,
-    NPopconfirm,
-    NSpace,
+    NInput,
+    NPagination,
   },
+
   data() {
     return {
       students: [],
+      filteredStudents: [],
+      search: "",
+      currentPage: 1,
+      itemsPerPage: 10,
+      isLoading: false,
       message: null,
+      columns: [
+        { title: "#", key: "id", width: 60 },
+        {
+          title: "Nombre Completo",
+          key: "full_name",
+          render: (row) =>
+            `${row.name} ${row.last_name} ${row.second_last_name}`,
+        },
+        { title: "CI", key: "ci" },
+        { title: "Teléfono", key: "phone" },
+        { title: "Género", key: "gender" },
+        {
+          title: "Imagen",
+          key: "image",
+          render: (row) =>
+            row.image
+              ? h("img", {
+                  src: `http://localhost:3000${row.image}`,
+                  alt: "foto",
+                  class: "w-10 h-10 rounded-full object-cover border",
+                })
+              : "-",
+        },
+        {
+          title: "Acciones",
+          key: "actions",
+          render: (row) =>
+            h("div", { class: "flex gap-2" }, [
+              h(
+                "button",
+                {
+                  class: "n-button n-button--primary n-button--small",
+                  onClick: () => this.$router.push(`/students/${row.id}/edit`),
+                },
+                [h(NIcon, null, { default: () => h(PencilOutline) }), " Editar"]
+              ),
+              h(
+                NPopconfirm,
+                {
+                  "onPositive-click": () => this.handleDelete(row.id),
+                  "positive-text": "Sí",
+                  "negative-text": "No",
+                },
+                {
+                  trigger: () =>
+                    h(
+                      "button",
+                      {
+                        class: "n-button n-button--error n-button--small",
+                      },
+                      [
+                        h(NIcon, null, { default: () => h(TrashOutline) }),
+                        " Eliminar",
+                      ]
+                    ),
+                  default: () => "¿Eliminar este estudiante?",
+                }
+              ),
+            ]),
+        },
+      ],
     };
+  },
+  computed: {
+    paginatedData() {
+      const start = (this.currentPage - 1) * this.itemsPerPage;
+      return this.filteredStudents.slice(start, start + this.itemsPerPage);
+    },
   },
   methods: {
     async fetchStudents() {
+      this.isLoading = true;
       try {
-        this.students = await StudentService.getAll();
-      } catch {
+        const data = await StudentService.getAll();
+        this.students = data;
+        this.filteredStudents = [...data];
+      } catch (err) {
         this.message.error("Error al cargar estudiantes.");
+      } finally {
+        this.isLoading = false;
       }
     },
-    async eliminar(id) {
+    handleSearch() {
+      const query = this.search.toLowerCase();
+      this.filteredStudents = this.students.filter((student) => {
+        const fullName =
+          `${student.name} ${student.last_name} ${student.second_last_name}`.toLowerCase();
+        return (
+          fullName.includes(query) ||
+          (student.ci && student.ci.toLowerCase().includes(query))
+        );
+      });
+      this.currentPage = 1;
+    },
+    async handleDelete(id) {
       try {
         await StudentService.remove(id);
         this.message.success("Estudiante eliminado.");
-        this.fetchStudents();
-      } catch {
-        this.message.error("No se pudo eliminar.");
+        await this.fetchStudents();
+      } catch (err) {
+        this.message.error("Error al eliminar estudiante.");
       }
     },
   },

@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -12,6 +6,19 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+
+enum Gender {
+  MASCULINO
+  FEMENINO
+  OTRO
+}
+
+enum PaymentType {
+  CONTADO
+  MENSUAL
+}
+
 
 model Role {
   id        Int     @id @default(autoincrement())
@@ -42,13 +49,75 @@ model Student {
   placeofbirth     String?  @db.VarChar(200)
   phone            String   @db.VarChar(10)
   gender           Gender
-  status Boolean   @default(true)
+  status           Boolean  @default(true)
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt
+
+  enrollments      Enrollment[]
 }
 
-enum Gender {
-  MASCULINO
-  FEMENINO
-  OTRO
+
+model Teacher {
+  id               BigInt   @id @default(autoincrement())
+  last_name        String?  @db.VarChar(100)
+  second_last_name String?  @db.VarChar(100)
+  name             String?  @db.VarChar(100)
+  ci               String?  @db.VarChar(15)
+  dateofbirth      DateTime
+  placeofbirth     String?  @db.VarChar(200)
+  phone            String   @db.VarChar(10)
+  gender           Gender
+  specialty        String?  @db.VarChar(255)
+  status           Boolean  @default(true)
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  courses          Course[]
 }
+
+model Modality {
+  id                BigInt    @id @default(autoincrement())
+  name              String    @db.VarChar(50)
+  duration_in_months Int
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  courses           Course[]
+}
+
+model Course {
+  id           BigInt   @id @default(autoincrement())
+  name         String   @db.VarChar(100)
+  parallel     String   @db.VarChar(100)
+  description  String?  @db.Text
+  cost         Decimal  @db.Decimal(10, 2) @default(0)
+  start_date   DateTime
+  end_date     DateTime?
+
+  teacherId    BigInt
+  modalityId   BigInt
+  teacher      Teacher  @relation(fields: [teacherId], references: [id])
+  modality     Modality @relation(fields: [modalityId], references: [id])
+
+  status       Boolean  @default(true)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  enrollments  Enrollment[]
+}
+
+model Enrollment {
+  id              BigInt      @id @default(autoincrement())
+  studentId       BigInt
+  courseId        BigInt
+  enrollment_date DateTime
+  payment_type    PaymentType
+
+  student         Student     @relation(fields: [studentId], references: [id])
+  course          Course      @relation(fields: [courseId], references: [id])
+
+  status          Boolean     @default(true)
+  created_at      DateTime    @default(now())
+  updated_at      DateTime    @updatedAt
+}
+

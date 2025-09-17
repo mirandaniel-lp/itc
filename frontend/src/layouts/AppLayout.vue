@@ -14,7 +14,9 @@
     >
       <div class="flex items-center gap-3 px-4 py-4">
         <n-icon size="20"><HomeOutline /></n-icon>
-        <span v-if="!collapsed" class="font-semibold tracking-wide">Panel</span>
+        <span v-if="!collapsed" class="font-semibold tracking-wide"
+          >Instituto Técnico Columbia</span
+        >
       </div>
       <n-menu
         :value="currentMenuKey"
@@ -31,7 +33,9 @@
       <n-drawer-content class="!p-0">
         <div class="flex items-center gap-3 px-4 py-4 border-b">
           <n-icon size="20"><HomeOutline /></n-icon>
-          <span class="font-semibold tracking-wide">Panel</span>
+          <span class="font-semibold tracking-wide"
+            >Instituto Técnico Columbia</span
+          >
         </div>
         <n-menu
           :value="currentMenuKey"
@@ -122,6 +126,10 @@ import {
   PersonCircleOutline,
   LogOutOutline,
   ChevronDown,
+  PeopleOutline,
+  SchoolOutline,
+  BookOutline,
+  CashOutline,
 } from "@vicons/ionicons5";
 
 export default {
@@ -182,21 +190,42 @@ export default {
       {
         label: "Usuarios",
         key: "/users",
-        icon: renderIcon(PersonCircleOutline),
+        icon: renderIcon(PeopleOutline),
       },
       {
         label: "Estudiantes",
         key: "/students",
-        icon: renderIcon(PersonCircleOutline),
+        icon: renderIcon(SchoolOutline),
         children: [
-          {
-            label: "Lista de Estudiantes",
-            key: "/students",
-          },
-          {
-            label: "Registrar Estudiante",
-            key: "/students/create",
-          },
+          { label: "Lista de Estudiantes", key: "/students" },
+          { label: "Registrar Estudiante", key: "/students/create" },
+        ],
+      },
+      {
+        label: "Docentes",
+        key: "/teachers",
+        icon: renderIcon(PeopleOutline),
+        children: [
+          { label: "Lista de Docentes", key: "/teachers" },
+          { label: "Registrar Docente", key: "/teachers/create" },
+        ],
+      },
+      {
+        label: "Cursos",
+        key: "/courses",
+        icon: renderIcon(BookOutline),
+        children: [
+          { label: "Lista de Cursos", key: "/courses" },
+          { label: "Registrar Curso", key: "/courses/create" },
+        ],
+      },
+      {
+        label: "Inscripciones",
+        key: "/enrollments",
+        icon: renderIcon(CashOutline),
+        children: [
+          { label: "Lista de Inscripciones", key: "/enrollments" },
+          { label: "Nueva Inscripción", key: "/enrollments/create" },
         ],
       },
     ]);
@@ -214,6 +243,9 @@ export default {
       home: "Inicio",
       users: "Usuarios",
       students: "Estudiantes",
+      teachers: "Docentes",
+      courses: "Cursos",
+      enrollments: "Inscripciones",
       create: "Nuevo",
       edit: "Editar",
     };

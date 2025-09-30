@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
-async function main() {
+export async function seedRoles() {
   const roles = [
     { id: 1, name: "ADMIN" },
     { id: 2, name: "USUARIO" },
@@ -15,14 +15,5 @@ async function main() {
     });
   }
 
-  console.log("Roles actualizados correctamente.");
+  console.log("Roles creados.");
 }
-
-main()
-  .catch((e) => {
-    console.error("Error:", e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });

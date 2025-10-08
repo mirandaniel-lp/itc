@@ -8,6 +8,8 @@ import teacherRoutes from "./routes/teacherRoutes.js";
 import courseRoutes from "./routes/courseRoutes.js";
 import enrollmentRoutes from "./routes/enrollmentRoutes.js";
 import modalityRoutes from "./routes/modalityRoutes.js";
+import activityRoutes from "./routes/activityRoutes.js";
+import gradeRoutes from "./routes/gradeRoutes.js";
 
 import cors from "cors";
 import path from "path";
@@ -35,6 +37,8 @@ app.use("/api/teachers", teacherRoutes);
 app.use("/api/courses", courseRoutes);
 app.use("/api/enrollments", enrollmentRoutes);
 app.use("/api/modalities", modalityRoutes);
+app.use("/api/activities", activityRoutes);
+app.use("/api/grades", gradeRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);

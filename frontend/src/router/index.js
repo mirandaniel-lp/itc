@@ -1,20 +1,4 @@
 import { createRouter, createWebHistory } from "vue-router";
-import HomeView from "../views/HomeView.vue";
-import Login from "../views/authentication/LoginView.vue";
-import Register from "../views/authentication/RegisterView.vue";
-import ListUsersView from "../views/users/ListUsersView.vue";
-import EditUserView from "../views/users/EditUserView.vue";
-import ListStudentsView from "../views/students/ListStudentsView.vue";
-import CreateStudentView from "../views/students/CreateStudentView.vue";
-import EditStudentView from "../views/students/EditStudentView.vue";
-import ListTeachersView from "../views/teachers/ListTeachersView.vue";
-import CreateTeacherView from "../views/teachers/CreateTeacherView.vue";
-import EditTeacherView from "../views/teachers/EditTeacherView.vue";
-import ListCoursesView from "../views/courses/ListCoursesView.vue";
-import CreateCourseView from "../views/courses/CreateCourseView.vue";
-import EditCourseView from "../views/courses/EditCourseView.vue";
-import ListEnrollmentsView from "../views/enrollments/ListEnrollmentsView.vue";
-import CreateEnrollmentView from "../views/enrollments/CreateEnrollmentView.vue";
 
 const routes = [
   {
@@ -24,86 +8,126 @@ const routes = [
   {
     path: "/home",
     name: "home",
-    component: HomeView,
+    component: () => import("@/views/HomeView.vue"),
   },
   {
     path: "/login",
     name: "login",
-    component: Login,
+    component: () => import("@/views/authentication/LoginView.vue"),
   },
   {
     path: "/register",
     name: "register",
-    component: Register,
+    component: () => import("@/views/authentication/RegisterView.vue"),
   },
   {
     path: "/users",
     name: "users",
-    component: ListUsersView,
+    component: () => import("@/views/users/ListUsersView.vue"),
   },
   {
     path: "/users/:id/edit",
     name: "edit-user",
-    component: EditUserView,
+    component: () => import("@/views/users/EditUserView.vue"),
     props: true,
   },
   {
     path: "/students",
     name: "students",
-    component: ListStudentsView,
+    component: () => import("@/views/students/ListStudentsView.vue"),
   },
   {
     path: "/students/create",
     name: "create-student",
-    component: CreateStudentView,
+    component: () => import("@/views/students/CreateStudentView.vue"),
   },
   {
     path: "/students/:id/edit",
     name: "edit-student",
-    component: EditStudentView,
+    component: () => import("@/views/students/EditStudentView.vue"),
     props: true,
   },
   {
     path: "/teachers",
     name: "teachers",
-    component: ListTeachersView,
+    component: () => import("@/views/teachers/ListTeachersView.vue"),
   },
   {
     path: "/teachers/create",
     name: "create-teacher",
-    component: CreateTeacherView,
+    component: () => import("@/views/teachers/CreateTeacherView.vue"),
   },
   {
     path: "/teachers/:id/edit",
     name: "edit-teacher",
-    component: EditTeacherView,
+    component: () => import("@/views/teachers/EditTeacherView.vue"),
     props: true,
   },
   {
     path: "/courses",
     name: "courses",
-    component: ListCoursesView,
+    component: () => import("@/views/courses/ListCoursesView.vue"),
   },
   {
     path: "/courses/create",
     name: "create-course",
-    component: CreateCourseView,
+    component: () => import("@/views/courses/CreateCourseView.vue"),
   },
   {
     path: "/courses/:id/edit",
     name: "edit-course",
-    component: EditCourseView,
+    component: () => import("@/views/courses/EditCourseView.vue"),
     props: true,
   },
   {
     path: "/enrollments",
     name: "enrollments",
-    component: ListEnrollmentsView,
+    component: () => import("@/views/enrollments/ListEnrollmentsView.vue"),
   },
   {
     path: "/enrollments/create",
     name: "create-enrollment",
-    component: CreateEnrollmentView,
+    component: () => import("@/views/enrollments/CreateEnrollmentView.vue"),
+  },
+  {
+    path: "/activities",
+    name: "activities",
+    component: () => import("@/views/activities/ListActivitiesView.vue"),
+  },
+  {
+    path: "/activities/create",
+    name: "CreateActivity",
+    component: () => import("@/views/activities/CreateActivityView.vue"),
+  },
+  {
+    path: "/activities/:id",
+    name: "ActivityDetail",
+    component: () => import("@/views/activities/ActivityDetailView.vue"),
+  },
+  {
+    path: "/grades/create",
+    name: "CreateGrade",
+    component: () => import("@/views/grades/CreateGradeView.vue"),
+  },
+  {
+    path: "/grades",
+    name: "grades",
+    component: () => import("@/views/grades/ListGradesView.vue"),
+  },
+  {
+    path: "/admin",
+    name: "admin-dashboard",
+    component: () => import("@/views/AdminDashboardView.vue"),
+  },
+  {
+    path: "/teacher/dashboard",
+    name: "teacher-dashboard",
+    component: () => import("@/views/TeacherDashboardView.vue"),
+  },
+  {
+    path: "/teacher/login",
+    name: "teacher-login",
+    component: () => import("@/views/authentication/TeacherLoginView.vue"),
   },
 ];
 

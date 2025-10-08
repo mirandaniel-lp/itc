@@ -1,33 +1,19 @@
 import { PrismaClient } from "@prisma/client";
+import { serialize } from "../utils/serializer.js";
 
 const prisma = new PrismaClient();
-
-const convertBigIntToString = (obj) => {
-  if (Array.isArray(obj)) {
-    return obj.map(convertBigIntToString);
-  } else if (obj && typeof obj === "object") {
-    const newObj = {};
-    for (const key in obj) {
-      const value = obj[key];
-      newObj[key] =
-        typeof value === "bigint"
-          ? value.toString()
-          : convertBigIntToString(value);
-    }
-    return newObj;
-  }
-  return obj;
-};
 
 export const listStudents = async (req, res) => {
   try {
     const students = await prisma.student.findMany({
       where: { status: true },
       orderBy: { id: "asc" },
+      include: {
+        enrollments: true,
+      },
     });
-    res.json({ students: convertBigIntToString(students) });
+    res.json({ students: serialize(students) });
   } catch (err) {
-    console.error("ERROR en listStudents:", err);
     res.status(500).json({ error: "Error al listar estudiantes." });
   }
 };
@@ -43,15 +29,13 @@ export const getStudentById = async (req, res) => {
       return res.status(404).json({ error: "Estudiante no encontrado." });
     }
 
-    const data = convertBigIntToString(student);
-
+    const data = serialize(student);
     data.dateofbirth = student.dateofbirth
       ? new Date(student.dateofbirth).getTime()
       : null;
 
     res.json({ student: data });
   } catch (err) {
-    console.error("ERROR en getStudentById:", err);
     res.status(500).json({ error: "Error al obtener estudiante." });
   }
 };
@@ -74,9 +58,8 @@ export const createStudent = async (req, res) => {
         status: true,
       },
     });
-    res.status(201).json({ student: convertBigIntToString(student) });
+    res.status(201).json({ student: serialize(student) });
   } catch (err) {
-    console.error("ERROR en createStudent:", err);
     res.status(400).json({ error: "Error al crear estudiante." });
   }
 };
@@ -112,9 +95,8 @@ export const updateStudent = async (req, res) => {
       },
     });
 
-    res.json({ student: convertBigIntToString(updatedStudent) });
+    res.json({ student: serialize(updatedStudent) });
   } catch (err) {
-    console.error("ERROR en updateStudent:", err);
     res.status(400).json({ error: "No se pudo actualizar estudiante." });
   }
 };
@@ -128,7 +110,6 @@ export const deleteStudent = async (req, res) => {
     });
     res.json({ message: "Estudiante eliminado correctamente." });
   } catch (err) {
-    console.error("ERROR en deleteStudent:", err);
     res.status(400).json({ error: "Error al eliminar estudiante." });
   }
 };

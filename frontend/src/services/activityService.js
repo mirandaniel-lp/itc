@@ -1,5 +1,6 @@
 import axios from "axios";
-const API_URL = "http://localhost:3000/api/courses";
+
+const API_URL = "http://localhost:3000/api/activities";
 
 const getAll = () => {
   const token = localStorage.getItem("token");
@@ -7,7 +8,7 @@ const getAll = () => {
     .get(API_URL, {
       headers: { Authorization: `Bearer ${token}` },
     })
-    .then((res) => res.data.courses);
+    .then((res) => res.data.activities);
 };
 
 const getById = (id) => {
@@ -16,7 +17,7 @@ const getById = (id) => {
     .get(`${API_URL}/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-    .then((res) => res.data.course);
+    .then((res) => res.data);
 };
 
 const create = (data) => {
@@ -40,10 +41,20 @@ const remove = (id) => {
   });
 };
 
+const getActivitiesByCourse = (courseId) => {
+  const token = localStorage.getItem("token");
+  return axios
+    .get(`${API_URL}/course/${courseId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    .then((res) => res.data.activities);
+};
+
 export default {
   getAll,
   getById,
   create,
   update,
   remove,
+  getActivitiesByCourse,
 };

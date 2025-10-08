@@ -7,7 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
 enum Gender {
   MASCULINO
   FEMENINO
@@ -19,23 +18,22 @@ enum PaymentType {
   MENSUAL
 }
 
-
 model Role {
-  id        Int     @id @default(autoincrement())
-  name      String  @unique
-  users     User[]
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  users User[]
 }
 
 model User {
-  id                Int      @id @default(autoincrement())
-  email             String   @unique
+  id                Int       @id @default(autoincrement())
+  email             String    @unique
   password          String
   email_verified_at DateTime?
-  created_at        DateTime @default(now())
-  updated_at        DateTime @updatedAt
-  status            Boolean  @default(true)
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+  status            Boolean   @default(true)
   roleId            Int
-  role              Role     @relation(fields: [roleId], references: [id])
+  role              Role      @relation(fields: [roleId], references: [id])
 }
 
 model Student {
@@ -53,18 +51,20 @@ model Student {
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt
 
-  enrollments      Enrollment[]
+  enrollments Enrollment[]
+  grades      Grade[] 
 }
-
 
 model Teacher {
   id               BigInt   @id @default(autoincrement())
-  last_name        String?  @db.VarChar(100)
-  second_last_name String?  @db.VarChar(100)
-  name             String?  @db.VarChar(100)
-  ci               String?  @db.VarChar(15)
+  last_name        String
+  second_last_name String?
+  name             String
+  ci               String    @unique
+  email            String?   @unique
+  password         String? 
   dateofbirth      DateTime
-  placeofbirth     String?  @db.VarChar(200)
+  placeofbirth     String
   phone            String   @db.VarChar(10)
   gender           Gender
   specialty        String?  @db.VarChar(255)
@@ -72,38 +72,40 @@ model Teacher {
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt
 
-  courses          Course[]
+  courses    Course[]
+  activities Activity[]
 }
 
 model Modality {
-  id                BigInt    @id @default(autoincrement())
-  name              String    @db.VarChar(50)
+  id                 BigInt   @id @default(autoincrement())
+  name               String   @db.VarChar(50)
   duration_in_months Int
-  created_at        DateTime  @default(now())
-  updated_at        DateTime  @updatedAt
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
 
-  courses           Course[]
+  courses Course[]
 }
 
 model Course {
-  id           BigInt   @id @default(autoincrement())
-  name         String   @db.VarChar(100)
-  parallel     String   @db.VarChar(100)
-  description  String?  @db.Text
-  cost         Decimal  @db.Decimal(10, 2) @default(0)
-  start_date   DateTime
-  end_date     DateTime?
+  id          BigInt    @id @default(autoincrement())
+  name        String    @db.VarChar(100)
+  parallel    String    @db.VarChar(100)
+  description String?   @db.Text
+  cost        Decimal   @default(0) @db.Decimal(10, 2)
+  start_date  DateTime
+  end_date    DateTime?
 
-  teacherId    BigInt
-  modalityId   BigInt
-  teacher      Teacher  @relation(fields: [teacherId], references: [id])
-  modality     Modality @relation(fields: [modalityId], references: [id])
+  teacherId  BigInt
+  modalityId BigInt
+  teacher    Teacher  @relation(fields: [teacherId], references: [id])
+  modality   Modality @relation(fields: [modalityId], references: [id])
 
-  status       Boolean  @default(true)
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
+  status     Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-  enrollments  Enrollment[]
+  enrollments Enrollment[]
+  activities  Activity[]
 }
 
 model Enrollment {
@@ -113,11 +115,38 @@ model Enrollment {
   enrollment_date DateTime
   payment_type    PaymentType
 
-  student         Student     @relation(fields: [studentId], references: [id])
-  course          Course      @relation(fields: [courseId], references: [id])
+  student Student @relation(fields: [studentId], references: [id])
+  course  Course  @relation(fields: [courseId], references: [id])
 
-  status          Boolean     @default(true)
-  created_at      DateTime    @default(now())
-  updated_at      DateTime    @updatedAt
+  status     Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 }
 
+model Activity {
+  id          BigInt   @id @default(autoincrement())
+  title       String   @db.VarChar(100)
+  description String?  @db.Text
+  status      Boolean  @default(true)
+  courseId    BigInt
+  teacherId   BigInt
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  course  Course  @relation(fields: [courseId], references: [id])
+  teacher Teacher @relation(fields: [teacherId], references: [id])
+  grades  Grade[]
+}
+
+model Grade {
+  id         BigInt   @id @default(autoincrement())
+  activityId BigInt
+  studentId  BigInt
+  score      Decimal  @db.Decimal(5, 2)
+  feedback   String?  @db.Text
+  status      Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  activity Activity @relation(fields: [activityId], references: [id])
+  student  Student  @relation(fields: [studentId], references: [id])
+}

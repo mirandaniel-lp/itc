@@ -5,16 +5,22 @@ import {
   createTeacher,
   updateTeacher,
   deleteTeacher,
+  loginTeacher,
+  getTeacherCourses,
 } from "../controllers/teacherController.js";
 import { authenticate } from "../middlewares/authMiddleware.js";
 
 const router = Router();
 
+router.post("/login", loginTeacher);
+
 router.use(authenticate);
+
 router.get("/", listTeachers);
 router.get("/:id", getTeacherById);
 router.post("/", createTeacher);
 router.put("/:id", updateTeacher);
 router.delete("/:id", deleteTeacher);
+router.get("/:id/courses", getTeacherCourses);
 
 export default router;

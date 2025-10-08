@@ -26,8 +26,16 @@
             />
           </n-form-item>
 
-          <n-form-item label="CI (Carnet de Identidad)">
-            <n-input v-model:value="form.ci" placeholder="Opcional" />
+          <n-form-item label="Correo electrónico" path="email">
+            <n-input
+              v-model:value="form.email"
+              placeholder="ejemplo@correo.com"
+              type="email"
+            />
+          </n-form-item>
+
+          <n-form-item label="CI (Carnet de Identidad)" path="ci">
+            <n-input v-model:value="form.ci" placeholder="Ingrese CI" />
           </n-form-item>
 
           <n-form-item label="Fecha de Nacimiento" path="dateofbirth">
@@ -66,10 +74,22 @@
           </n-form-item>
 
           <div class="mt-4">
-            <n-button type="primary" @click="submit">Guardar</n-button>
+            <n-button type="primary" @click="showConfirmDialog = true"
+              >Guardar</n-button
+            >
           </div>
         </n-form>
       </n-card>
+      <n-dialog
+        v-model:show="showConfirmDialog"
+        title="Confirmar registro"
+        positive-text="Registrar"
+        negative-text="Cancelar"
+        @positive-click="submit"
+      >
+        Se enviará un correo electrónico al docente con sus credenciales de
+        acceso (CI y PIN). ¿Desea continuar?
+      </n-dialog>
     </div>
   </app-layout>
 </template>
@@ -83,6 +103,7 @@ import {
   NButton,
   NSelect,
   NDatePicker,
+  NDialog,
   useMessage,
 } from "naive-ui";
 import AppLayout from "@/layouts/AppLayout.vue";
@@ -99,15 +120,18 @@ export default {
     NButton,
     NSelect,
     NDatePicker,
+    NDialog,
   },
   data() {
     return {
       formRef: null,
       message: null,
+      showConfirmDialog: false,
       form: {
         name: "",
         last_name: "",
         second_last_name: "",
+        email: "",
         ci: "",
         dateofbirth: null,
         placeofbirth: "",
@@ -138,6 +162,15 @@ export default {
           message: "Apellido materno requerido",
           trigger: "blur",
           validator: (_, val) => /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(val),
+        },
+        email: [
+          { required: true, message: "Correo requerido", trigger: "blur" },
+          { type: "email", message: "Correo no válido", trigger: "blur" },
+        ],
+        ci: {
+          required: true,
+          message: "CI requerido",
+          trigger: "blur",
         },
         phone: {
           required: true,
@@ -174,7 +207,9 @@ export default {
         };
 
         await TeacherService.create(data);
-        this.message.success("Docente registrado exitosamente.");
+        this.message.success(
+          "Docente registrado exitosamente. Se envió un correo con sus credenciales."
+        );
         this.$router.push("/teachers");
       } catch (err) {
         console.error(err);

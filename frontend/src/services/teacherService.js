@@ -2,39 +2,57 @@ import axios from "axios";
 
 const API_URL = "http://localhost:3000/api/teachers";
 
-const apiClient = axios.create({
-  baseURL: API_URL,
-  headers: { "Content-Type": "application/json" },
-  withCredentials: true,
-});
-
-apiClient.interceptors.request.use((config) => {
+const getAll = () => {
   const token = localStorage.getItem("token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+  return axios
+    .get(API_URL, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    .then((res) => res.data.teachers);
+};
+
+const getById = (id) => {
+  const token = localStorage.getItem("token");
+  return axios
+    .get(`${API_URL}/${id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    .then((res) => res.data.teacher);
+};
+
+const create = (data) => {
+  const token = localStorage.getItem("token");
+  return axios.post(API_URL, data, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+};
+
+const update = (id, data) => {
+  const token = localStorage.getItem("token");
+  return axios.put(`${API_URL}/${id}`, data, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+};
+
+const remove = (id) => {
+  const token = localStorage.getItem("token");
+  return axios.delete(`${API_URL}/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+};
+
+const getCourses = (teacherId) => {
+  const token = localStorage.getItem("token");
+  return fetch(`${API_URL}/${teacherId}/courses`, {
+    headers: { Authorization: `Bearer ${token}` },
+  }).then((res) => res.json());
+};
 
 export default {
-  async getAll() {
-    const res = await apiClient.get("/");
-    return res.data.teachers;
-  },
-  async getById(id) {
-    const res = await apiClient.get(`/${id}`);
-    return res.data.teacher;
-  },
-  async create(data) {
-    const res = await apiClient.post("/", data);
-    return res.data.teacher;
-  },
-  async update(id, data) {
-    const res = await apiClient.put(`/${id}`, data);
-    return res.data.teacher;
-  },
-  async remove(id) {
-    const res = await apiClient.delete(`/${id}`);
-    return res.data.message;
-  },
+  getAll,
+  getById,
+  create,
+  update,
+  remove,
+  getCourses,
 };

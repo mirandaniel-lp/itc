@@ -168,7 +168,6 @@ export default {
           label: `${t.name} ${t.last_name} ${t.second_last_name}`,
           value: t.id,
         }));
-
         const res = await axios.get("http://localhost:3000/api/modalities", {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,

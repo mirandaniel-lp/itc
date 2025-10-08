@@ -1,29 +1,65 @@
 import { PrismaClient } from "@prisma/client";
+import { serialize } from "../utils/serializer.js";
 const prisma = new PrismaClient();
-
-function serializeBigInt(obj) {
-  if (Array.isArray(obj)) {
-    return obj.map(serializeBigInt);
-  } else if (obj && typeof obj === "object") {
-    const result = {};
-    for (const key in obj) {
-      const value = obj[key];
-      result[key] =
-        typeof value === "bigint" ? value.toString() : serializeBigInt(value);
-    }
-    return result;
-  }
-  return obj;
-}
 
 export const listModalities = async (req, res) => {
   try {
     const modalities = await prisma.modality.findMany({
       orderBy: { id: "asc" },
     });
-    res.json({ modalities: serializeBigInt(modalities) });
+    res.json({ modalities: serialize(modalities) });
   } catch (err) {
-    console.error("ERROR al listar modalidades:", err);
-    res.status(500).json({ error: "Error al obtener modalidades." });
+    res.status(500).json({ error: "Error al listar modalidades." });
+  }
+};
+
+export const getModalityById = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const modality = await prisma.modality.findUnique({
+      where: { id: BigInt(id) },
+    });
+    if (!modality)
+      return res.status(404).json({ error: "Modalidad no encontrada." });
+    res.json({ modality: serialize(modality) });
+  } catch (err) {
+    res.status(500).json({ error: "Error al obtener modalidad." });
+  }
+};
+
+export const createModality = async (req, res) => {
+  try {
+    const modality = await prisma.modality.create({
+      data: req.body,
+    });
+    res.status(201).json({ modality: serialize(modality) });
+  } catch (err) {
+    res.status(400).json({ error: "Error al crear modalidad." });
+  }
+};
+
+export const updateModality = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const updated = await prisma.modality.update({
+      where: { id: BigInt(id) },
+      data: req.body,
+    });
+    res.json({ modality: serialize(updated) });
+  } catch (err) {
+    res.status(400).json({ error: "No se pudo actualizar modalidad." });
+  }
+};
+
+export const deleteModality = async (req, res) => {
+  const { id } = req.params;
+  try {
+    await prisma.modality.update({
+      where: { id: BigInt(id) },
+      data: { status: false },
+    });
+    res.json({ message: "Modalidad eliminada correctamente." });
+  } catch (err) {
+    res.status(400).json({ error: "Error al eliminar modalidad." });
   }
 };

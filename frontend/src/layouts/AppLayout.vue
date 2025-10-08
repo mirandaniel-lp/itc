@@ -228,6 +228,24 @@ export default {
           { label: "Nueva Inscripción", key: "/enrollments/create" },
         ],
       },
+      {
+        label: "Actividades",
+        key: "/activities",
+        icon: renderIcon(BookOutline),
+        children: [
+          { label: "Lista de Actividades", key: "/activities/list" },
+          { label: "Registrar Actividad", key: "/activities/create" },
+        ],
+      },
+      {
+        label: "Calificaciones",
+        key: "/grades",
+        icon: renderIcon(SchoolOutline),
+        children: [
+          { label: "Lista de Calificaciones", key: "/grades/list" },
+          { label: "Registrar Calificación", key: "/grades/create" },
+        ],
+      },
     ]);
 
     const currentMenuKey = computed(() => route.path);

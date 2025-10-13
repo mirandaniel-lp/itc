@@ -115,14 +115,14 @@ const routes = [
     component: () => import("@/views/grades/ListGradesView.vue"),
   },
   {
-    path: "/admin",
-    name: "admin-dashboard",
-    component: () => import("@/views/AdminDashboardView.vue"),
+    path: "/reports",
+    name: "reports",
+    component: () => import("@/views/reports/ReportsView.vue"),
   },
   {
     path: "/teacher/dashboard",
     name: "teacher-dashboard",
-    component: () => import("@/views/TeacherDashboardView.vue"),
+    component: () => import("@/views/teacher/TeacherDashboardView.vue"),
   },
   {
     path: "/teacher/login",

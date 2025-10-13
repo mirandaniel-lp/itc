@@ -130,6 +130,7 @@ import {
   SchoolOutline,
   BookOutline,
   CashOutline,
+  PieChartOutline,
 } from "@vicons/ionicons5";
 
 export default {
@@ -233,7 +234,7 @@ export default {
         key: "/activities",
         icon: renderIcon(BookOutline),
         children: [
-          { label: "Lista de Actividades", key: "/activities/list" },
+          { label: "Lista de Actividades", key: "/activities" },
           { label: "Registrar Actividad", key: "/activities/create" },
         ],
       },
@@ -242,9 +243,14 @@ export default {
         key: "/grades",
         icon: renderIcon(SchoolOutline),
         children: [
-          { label: "Lista de Calificaciones", key: "/grades/list" },
+          { label: "Lista de Calificaciones", key: "/grades" },
           { label: "Registrar Calificación", key: "/grades/create" },
         ],
+      },
+      {
+        label: "Reportes",
+        key: "/reports",
+        icon: renderIcon(PieChartOutline),
       },
     ]);
 
@@ -264,6 +270,8 @@ export default {
       teachers: "Docentes",
       courses: "Cursos",
       enrollments: "Inscripciones",
+      activities: "Actividades",
+      reports: "Reportes",
       create: "Nuevo",
       edit: "Editar",
     };
@@ -272,7 +280,6 @@ export default {
       const segments = route.path.split("/").filter(Boolean);
       const crumbs = [];
       let cumulativePath = "";
-
       segments.forEach((segment) => {
         cumulativePath += `/${segment}`;
         if (!isNaN(segment)) return;
@@ -282,7 +289,6 @@ export default {
           segment.charAt(0).toUpperCase() + segment.slice(1);
         crumbs.push({ label, to: cumulativePath });
       });
-
       return crumbs;
     });
 

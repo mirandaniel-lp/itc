@@ -35,6 +35,7 @@ export const createGrade = async (req, res) => {
     res.status(201).json({ grade: serialize(grade) });
   } catch (err) {
     res.status(400).json({ error: "Error al crear calificación." });
+    console.log(err);
   }
 };
 

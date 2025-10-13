@@ -6,6 +6,7 @@ import {
   updateTeacher,
   deleteTeacher,
   loginTeacher,
+  logoutTeacher,
   getTeacherCourses,
 } from "../controllers/teacherController.js";
 import { authenticate } from "../middlewares/authMiddleware.js";
@@ -13,6 +14,7 @@ import { authenticate } from "../middlewares/authMiddleware.js";
 const router = Router();
 
 router.post("/login", loginTeacher);
+router.post("/logout", authenticate, logoutTeacher);
 
 router.use(authenticate);
 

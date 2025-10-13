@@ -90,7 +90,7 @@ export default {
       const resTeachers = await TeacherService.getAll();
       this.teachers = resTeachers;
       this.teacherOptions = this.teachers.map((t) => ({
-        label: t.name,
+        label: `${t.name} ${t.last_name}`,
         value: t.id,
       }));
     } catch (err) {

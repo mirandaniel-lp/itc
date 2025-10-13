@@ -15,7 +15,15 @@ const updateGrade = (id, data) => {
   });
 };
 
+const createGrade = (data) => {
+  const token = localStorage.getItem("token");
+  return axios.post(API_URL, data, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+};
+
 export default {
   getGradesByActivity,
   updateGrade,
+  createGrade,
 };

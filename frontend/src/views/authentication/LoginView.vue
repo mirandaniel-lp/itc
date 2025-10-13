@@ -4,7 +4,7 @@
       <n-form-item label="Email" path="email">
         <n-input
           v-model:value="formData.email"
-          placeholder="ejemplo@email.com"
+          placeholder="Ingresa Correo Electrónico"
         />
       </n-form-item>
 
@@ -13,7 +13,7 @@
           v-model:value="formData.password"
           type="password"
           show-password-on="click"
-          placeholder="Tu contraseña"
+          placeholder="Ingresa tu Contraseña"
         />
       </n-form-item>
 
@@ -24,6 +24,11 @@
       <div class="text-center mt-4">
         <n-button text @click="goToRegister">
           ¿No tienes cuenta? Regístrate
+        </n-button>
+      </div>
+      <div class="text-center mt-4">
+        <n-button text @click="goToTeacherLogin">
+          ¿Eres docente? Inicia Sesión
         </n-button>
       </div>
     </n-form>
@@ -92,6 +97,10 @@ export default {
 
     goToRegister() {
       this.$router.push("/register");
+    },
+
+    goToTeacherLogin() {
+      this.$router.push("/teacher/login");
     },
   },
 };

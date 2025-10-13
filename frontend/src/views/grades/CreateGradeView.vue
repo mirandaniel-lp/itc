@@ -65,11 +65,11 @@ import {
   NButton,
   useMessage,
 } from "naive-ui";
-import { createGrade } from "@/services/gradeService";
 import ActivityService from "@/services/activityService";
 import CourseService from "@/services/courseService";
 import StudentService from "@/services/studentService";
 import AppLayout from "@/layouts/AppLayout.vue";
+import gradeService from "@/services/gradeService";
 
 export default {
   name: "CreateGradeView",
@@ -134,14 +134,14 @@ export default {
     },
     async submit() {
       try {
-        await createGrade({
+        await gradeService.create({
           activityId: this.activityId,
           studentId: this.studentId,
           score: this.score,
           feedback: this.feedback,
         });
         this.message.success("Calificación registrada correctamente.");
-        this.$router.push("/grades/list");
+        this.$router.push("/grades");
       } catch {
         this.message.error("Error al registrar calificación.");
       }

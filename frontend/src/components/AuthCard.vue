@@ -1,67 +1,41 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center p-4 bg-gray-50">
+  <div
+    class="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0f172a] to-[#1e293b] p-6 text-gray-100 transition-all duration-300"
+  >
     <n-card
-      class="w-[380px] rounded-3xl shadow-lg transform transition-all duration-300 bg-white/80 backdrop-blur-sm"
+      class="w-[400px] rounded-2xl border border-gray-700 shadow-[0_10px_30px_rgba(0,0,0,0.4)] backdrop-blur-sm"
+      :content-style="{ padding: '36px 40px' }"
     >
-      <div class="text-center space-y-3">
-        <div class="animate-fadeIn">
-          <h1 class="text-2xl font-bold text-gray-800 mb-1">
-            Instituto Técnico Columbia
-          </h1>
-          <h2 class="text-lg text-gray-600">
-            {{ title }}
-          </h2>
-        </div>
+      <div class="text-center mb-6">
         <div
-          class="w-16 h-1 bg-green-900 mx-auto rounded-full opacity-75"
+          class="mx-auto w-20 h-20 rounded-2xl bg-gradient-to-b from-[#1e3a8a] to-[#1d4ed8] flex items-center justify-center shadow-[0_0_25px_rgba(37,99,235,0.6)] hover:shadow-[0_0_45px_rgba(37,99,235,0.9)] hover:scale-105 transition-all duration-500 ease-out"
+        >
+          <img
+            src="@/assets/logo.png"
+            alt="Logo Instituto Técnico Columbia"
+            class="w-12 h-12 object-contain brightness-0 invert drop-shadow-[0_0_8px_rgba(255,255,255,0.6)]"
+          />
+        </div>
+
+        <h1 class="text-2xl font-extrabold text-[#ffffff] mt-5 tracking-tight">
+          {{ title }}
+        </h1>
+
+        <p class="text-gray-400 text-sm mt-1">{{ subtitle }}</p>
+
+        <div
+          class="mx-auto mt-3 w-24 h-[3px] bg-gradient-to-r from-[#2563eb] to-[#1e3a8a] rounded-full opacity-80"
         ></div>
       </div>
 
-      <div class="mt-6 animate-slideUp">
-        <slot></slot>
-      </div>
+      <slot></slot>
     </n-card>
   </div>
 </template>
 
-<script>
-export default {
-  name: "AuthCard",
-  props: {
-    title: {
-      type: String,
-      required: true,
-    },
-  },
-};
+<script setup>
+defineProps({
+  title: { type: String, required: true },
+  subtitle: { type: String, default: "" },
+});
 </script>
-
-<style>
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes slideUp {
-  from {
-    transform: translateY(20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-.animate-fadeIn {
-  animation: fadeIn 0.6s ease-out;
-}
-
-.animate-slideUp {
-  animation: slideUp 0.5s ease-out;
-}
-</style>

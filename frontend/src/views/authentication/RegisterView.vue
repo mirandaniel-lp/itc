@@ -1,38 +1,40 @@
 <template>
   <auth-card title="Registrar">
     <n-form :model="formData" :rules="rules" ref="formRef">
-      <n-form-item label="Email" path="email">
-        <n-input
-          v-model:value="formData.email"
-          type="email"
-          placeholder="ejemplo@email.com"
-        />
-      </n-form-item>
+      <TextInput
+        v-model="formData.email"
+        label="Correo Electrónico"
+        type="email"
+        placeholder="Ingresar Correo Electrónico"
+        class="my-5"
+      />
 
-      <n-form-item label="Contraseña" path="password">
-        <n-input
-          v-model:value="formData.password"
-          type="password"
-          show-password-on="click"
-          placeholder="Crear contraseña"
-        />
-      </n-form-item>
+      <TextInput
+        v-model="formData.password"
+        label="Contraseña"
+        type="password"
+        placeholder="Ingresar Contraseña"
+        class="my-5"
+      />
 
-      <n-form-item label="Confirmar Contraseña" path="confirmPassword">
-        <n-input
-          v-model:value="formData.confirmPassword"
-          type="password"
-          show-password-on="click"
-          placeholder="Confirmar contraseña"
-        />
-      </n-form-item>
+      <TextInput
+        v-model="formData.confirmPassword"
+        label="Confirmar Contraseña"
+        type="password"
+        placeholder="Confirmar Contraseña"
+        class="my-5"
+      />
 
-      <n-button type="primary" block secondary strong @click="handleRegister">
+      <PrimaryButton :loading="isLoading" @click="handleRegister" class="mt-3">
         Registrar
-      </n-button>
+      </PrimaryButton>
 
-      <div class="text-center mt-4">
-        <n-button text @click="goToLogin">
+      <div class="text-center mt-5 space-y-2">
+        <n-button
+          text
+          @click="goToLogin"
+          class="text-[#3b82f6] hover:underline"
+        >
           ¿Ya tienes cuenta? Inicia sesión
         </n-button>
       </div>
@@ -42,15 +44,18 @@
 
 <script>
 import AuthCard from "@/components/AuthCard.vue";
+import PrimaryButton from "@/components/PrimaryButton.vue";
+import TextInput from "@/components/TextInput.vue";
 import AuthService from "@/services/authService";
 import { useMessage } from "naive-ui";
 import { useRouter } from "vue-router";
 
 export default {
   name: "RegisterView",
-
   components: {
     AuthCard,
+    PrimaryButton,
+    TextInput,
   },
 
   setup() {
@@ -61,6 +66,7 @@ export default {
 
   data() {
     return {
+      isLoading: false,
       formData: {
         email: "",
         password: "",
@@ -88,19 +94,18 @@ export default {
 
   methods: {
     async handleRegister() {
+      this.isLoading = true;
+      await new Promise((r) => setTimeout(r, 2000));
       try {
         await this.$refs.formRef?.validate();
-
         const userData = {
           email: this.formData.email,
           password: this.formData.password,
           roleId: 2,
         };
-
         const { message: responseMessage, user } = await AuthService.register(
           userData
         );
-
         if (user) {
           this.message.success(
             responseMessage || "¡Registro exitoso! Por favor inicia sesión."
@@ -115,6 +120,8 @@ export default {
             error.message ||
             "Error al registrar. Intenta nuevamente."
         );
+      } finally {
+        this.isLoading = false;
       }
     },
 

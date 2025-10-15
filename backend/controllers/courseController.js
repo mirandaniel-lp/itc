@@ -7,6 +7,10 @@ export const listCourses = async (req, res) => {
     const courses = await prisma.course.findMany({
       where: { status: true },
       orderBy: { id: "asc" },
+      include: {
+        teacher: true,
+        modality: true,
+      },
     });
     res.json({ courses: serialize(courses) });
   } catch (err) {

@@ -5,7 +5,6 @@ import { serialize } from "../utils/serializer.js";
 import { sendTeacherCredentials } from "../utils/mailer.js";
 
 const prisma = new PrismaClient();
-
 const generatePin = () => Math.floor(1000 + Math.random() * 9000).toString();
 
 export const listTeachers = async (req, res) => {
@@ -35,22 +34,40 @@ export const getTeacherById = async (req, res) => {
 
 export const createTeacher = async (req, res) => {
   try {
-    const plainPassword = generatePin();
-    const hashedPassword = await bcrypt.hash(plainPassword, 10);
-    const data = { ...req.body, password: hashedPassword };
-    const teacher = await prisma.teacher.create({ data });
+    const pin = generatePin();
+    const hashedPassword = await bcrypt.hash(pin, 10);
 
-    if (req.body.email) {
-      await sendTeacherCredentials({
-        to: req.body.email,
+    const teacher = await prisma.teacher.create({
+      data: {
         name: req.body.name,
+        last_name: req.body.last_name,
+        second_last_name: req.body.second_last_name,
+        email: req.body.email,
         ci: req.body.ci,
-        pin: plainPassword,
-      });
-    }
+        dateofbirth: req.body.dateofbirth
+          ? new Date(req.body.dateofbirth)
+          : null,
+        placeofbirth: req.body.placeofbirth,
+        phone: req.body.phone,
+        gender: req.body.gender,
+        specialty: req.body.specialty,
+        password: hashedPassword,
+        status: true,
+      },
+    });
 
-    res.status(201).json({ teacher: serialize(teacher), pin: plainPassword });
-  } catch {
+    res.status(201).json({ teacher: serialize(teacher), pin });
+    if (req.body.email) {
+      Promise.resolve(
+        sendTeacherCredentials({
+          to: req.body.email,
+          name: req.body.name,
+          ci: req.body.ci,
+          pin,
+        })
+      ).catch((err) => console.error("Mailer error:", err));
+    }
+  } catch (e) {
     res.status(400).json({ error: "Error al crear docente." });
   }
 };
@@ -59,7 +76,20 @@ export const updateTeacher = async (req, res) => {
   try {
     const updated = await prisma.teacher.update({
       where: { id: BigInt(req.params.id) },
-      data: req.body,
+      data: {
+        name: req.body.name,
+        last_name: req.body.last_name,
+        second_last_name: req.body.second_last_name,
+        email: req.body.email,
+        ci: req.body.ci,
+        dateofbirth: req.body.dateofbirth
+          ? new Date(req.body.dateofbirth)
+          : null,
+        placeofbirth: req.body.placeofbirth,
+        phone: req.body.phone,
+        gender: req.body.gender,
+        specialty: req.body.specialty,
+      },
     });
     res.json({ teacher: serialize(updated) });
   } catch {
@@ -124,10 +154,7 @@ export const getTeacherCourses = async (req, res) => {
   try {
     const courses = await prisma.course.findMany({
       where: { teacherId: BigInt(req.params.id), status: true },
-      include: {
-        modality: true,
-        students: { include: { student: true } },
-      },
+      include: { modality: true, students: { include: { student: true } } },
     });
     res.json({ courses: serialize(courses) });
   } catch {

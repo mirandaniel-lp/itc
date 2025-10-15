@@ -6,7 +6,6 @@ export async function seedRoles() {
     { id: 1, name: "ADMIN" },
     { id: 2, name: "USUARIO" },
   ];
-
   for (const role of roles) {
     await prisma.role.upsert({
       where: { id: role.id },
@@ -14,6 +13,4 @@ export async function seedRoles() {
       create: role,
     });
   }
-
-  console.log("Roles creados.");
 }

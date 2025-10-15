@@ -1,57 +1,170 @@
 <template>
   <app-layout>
-    <div class="min-h-screen p-4">
-      <n-card title="Cursos" size="large">
-        <div class="mb-4 flex flex-wrap justify-between items-center gap-2">
-          <n-input
-            v-model:value="search"
-            placeholder="Buscar por nombre o paralelo"
-            clearable
-            @input="handleSearch"
-            style="max-width: 300px"
-          />
-          <n-button type="primary" @click="$router.push('/courses/create')">
-            + Nuevo
-          </n-button>
+    <div class="min-h-screen p-8 bg-[#0f172a] text-white">
+      <div class="max-w-7xl mx-auto space-y-8">
+        <div
+          class="flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+        >
+          <h1 class="text-4xl font-extrabold">Lista de Cursos</h1>
+          <div class="flex items-center gap-3 w-full md:w-auto">
+            <div class="relative w-full md:w-80">
+              <input
+                v-model="search"
+                @input="handleSearch"
+                type="text"
+                placeholder="Buscar por nombre o paralelo"
+                class="w-full h-12 bg-[#1e293b]/95 border border-[#334155] rounded-lg pl-4 pr-11 text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-all duration-300"
+              />
+              <n-icon
+                :component="SearchOutline"
+                class="absolute right-3 top-[14px] text-[#60a5fa]"
+                size="20"
+              />
+            </div>
+            <n-button
+              type="primary"
+              class="font-extrabold"
+              @click="$router.push('/courses/create')"
+            >
+              + Nuevo
+            </n-button>
+          </div>
         </div>
 
-        <div class="overflow-x-auto">
-          <n-data-table
-            :loading="isLoading"
-            :columns="columns"
-            :data="paginatedData"
-            :pagination="false"
-            :bordered="false"
-            :striped="true"
-          />
-        </div>
+        <div
+          class="rounded-2xl border border-[#334155] shadow-[0_6px_25px_rgba(0,0,0,0.4)] bg-[#0b1220]/70 backdrop-blur-sm p-6"
+        >
+          <div
+            v-if="isLoading"
+            class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+          >
+            <div
+              v-for="i in 9"
+              :key="i"
+              class="h-56 rounded-2xl bg-[#1e293b]/60 border border-[#334155] animate-pulse"
+            />
+          </div>
 
-        <div class="flex justify-end mt-4">
-          <n-pagination
-            v-model:page="currentPage"
-            :page-size="itemsPerPage"
-            :item-count="filteredCourses.length"
-            show-quick-jumper
-          />
+          <div
+            v-else
+            class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+          >
+            <div
+              v-for="c in paginatedData"
+              :key="c.id"
+              class="group rounded-2xl border border-[#334155] bg-[#0f172a]/80 hover:bg-[#0f172a] transition-all duration-300 shadow-[0_4px_18px_rgba(0,0,0,0.35)] overflow-hidden"
+            >
+              <div class="p-5 space-y-4">
+                <div class="flex items-start justify-between">
+                  <div>
+                    <h2 class="text-xl font-extrabold leading-6">
+                      {{ c.name }}
+                      <span class="text-[#60a5fa]">({{ c.parallel }})</span>
+                    </h2>
+                    <p class="text-xs text-gray-400 mt-1">ID #{{ c.id }}</p>
+                  </div>
+                  <span
+                    class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#1d4ed8]/20 text-[#93c5fd] border border-[#1d4ed8]/40"
+                  >
+                    {{ c.modality?.name || "—" }}
+                  </span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 text-sm">
+                  <div class="flex items-center gap-2 text-gray-300">
+                    <n-icon :component="PersonOutline" size="18" />
+                    <span class="truncate">{{
+                      c.teacher
+                        ? `${c.teacher.name} ${c.teacher.last_name}`
+                        : "Sin docente"
+                    }}</span>
+                  </div>
+                  <div
+                    class="flex items-center gap-2 text-gray-300 justify-end"
+                  >
+                    <n-icon :component="LayersOutline" size="18" />
+                    <span>Paralelo {{ c.parallel }}</span>
+                  </div>
+                  <div class="flex items-center gap-2 text-gray-300">
+                    <n-icon :component="CalendarOutline" size="18" />
+                    <span>
+                      {{ c.start_date ? formatDate(c.start_date) : "-" }}
+                    </span>
+                  </div>
+                  <div
+                    class="flex items-center gap-2 text-gray-300 justify-end"
+                  >
+                    <n-icon :component="CalendarOutline" size="18" />
+                    <span>
+                      {{ c.end_date ? formatDate(c.end_date) : "-" }}
+                    </span>
+                  </div>
+                  <div class="col-span-2 flex items-center gap-2 text-gray-200">
+                    <n-icon :component="CashOutline" size="18" />
+                    <span class="text-lg font-extrabold">
+                      {{ formatMoney(c.cost) }} Bs.
+                    </span>
+                  </div>
+                </div>
+
+                <div class="flex items-center justify-between pt-1">
+                  <button
+                    class="px-3 py-1.5 rounded-lg text-sm font-bold bg-gradient-to-r from-[#1e3a8a] to-[#2563eb] text-white hover:shadow-[0_0_15px_rgba(37,99,235,0.5)] transition-all"
+                    @click="$router.push(`/courses/${c.id}/edit`)"
+                  >
+                    Editar
+                  </button>
+
+                  <n-popconfirm
+                    :positive-text="'Sí'"
+                    :negative-text="'No'"
+                    @positive-click="handleDelete(c.id)"
+                  >
+                    <template #trigger>
+                      <button
+                        class="px-3 py-1.5 rounded-lg text-sm font-bold bg-gradient-to-r from-[#7f1d1d] to-[#dc2626] text-white hover:shadow-[0_0_15px_rgba(239,68,68,0.5)] transition-all"
+                      >
+                        Eliminar
+                      </button>
+                    </template>
+                    ¿Eliminar este curso?
+                  </n-popconfirm>
+                </div>
+              </div>
+            </div>
+
+            <div
+              v-if="!paginatedData.length && !isLoading"
+              class="col-span-full text-center py-16 text-gray-400"
+            >
+              No hay cursos para mostrar.
+            </div>
+          </div>
+
+          <div class="flex justify-end mt-6">
+            <n-pagination
+              v-model:page="currentPage"
+              :page-size="itemsPerPage"
+              :item-count="filteredCourses.length"
+              :show-quick-jumper="false"
+              class="rounded-xl font-extrabold px-3 py-2 bg-[#1e293b] border border-[#3b82f6]/60 shadow-[0_0_20px_rgba(37,99,235,0.3)] text-white [&_.n-pagination-item]:bg-transparent [&_.n-pagination-item]:text-gray-200 [&_.n-pagination-item--active]:bg-[#2563eb] [&_.n-pagination-item--active]:text-white"
+            />
+          </div>
         </div>
-      </n-card>
+      </div>
     </div>
   </app-layout>
 </template>
 
 <script>
+import { NButton, NIcon, NPagination, NPopconfirm, useMessage } from "naive-ui";
 import {
-  NCard,
-  NDataTable,
-  NButton,
-  NInput,
-  NPagination,
-  useMessage,
-  NPopconfirm,
-  NIcon,
-} from "naive-ui";
-import { PencilOutline, TrashOutline } from "@vicons/ionicons5";
-import { h } from "vue";
+  SearchOutline,
+  CalendarOutline,
+  CashOutline,
+  PersonOutline,
+  LayersOutline,
+} from "@vicons/ionicons5";
 import AppLayout from "@/layouts/AppLayout.vue";
 import CourseService from "@/services/courseService";
 
@@ -59,102 +172,25 @@ export default {
   name: "ListCoursesView",
   components: {
     AppLayout,
-    NCard,
-    NDataTable,
     NButton,
-    NInput,
+    NIcon,
     NPagination,
+    NPopconfirm,
   },
   data() {
     return {
+      SearchOutline,
+      CalendarOutline,
+      CashOutline,
+      PersonOutline,
+      LayersOutline,
       courses: [],
       filteredCourses: [],
       search: "",
       currentPage: 1,
-      itemsPerPage: 10,
+      itemsPerPage: 9,
       isLoading: false,
       message: null,
-      columns: [
-        { title: "#", key: "id", width: 60 },
-        { title: "Nombre", key: "name" },
-        { title: "Paralelo", key: "parallel" },
-        {
-          title: "Docente",
-          key: "teacher",
-          render: (row) =>
-            row.teacher ? `${row.teacher.name} ${row.teacher.last_name}` : "-",
-        },
-        {
-          title: "Modalidad",
-          key: "modality",
-          render: (row) => row.modality?.name || "-",
-        },
-        {
-          title: "Inicio",
-          key: "start_date",
-          render: (row) =>
-            row.start_date
-              ? new Date(row.start_date).toLocaleDateString("es-BO", {
-                  day: "2-digit",
-                  month: "2-digit",
-                  year: "numeric",
-                })
-              : "-",
-        },
-        {
-          title: "Fin",
-          key: "end_date",
-          render: (row) =>
-            row.start_date
-              ? new Date(row.end_date).toLocaleDateString("es-BO", {
-                  day: "2-digit",
-                  month: "2-digit",
-                  year: "numeric",
-                })
-              : "-",
-        },
-        {
-          title: "Costo (Bs.)",
-          key: "cost",
-        },
-        {
-          title: "Acciones",
-          key: "actions",
-          render: (row) =>
-            h("div", { class: "flex gap-2" }, [
-              h(
-                "button",
-                {
-                  class: "n-button n-button--primary n-button--small",
-                  onClick: () => this.$router.push(`/courses/${row.id}/edit`),
-                },
-                [h(NIcon, null, { default: () => h(PencilOutline) }), " Editar"]
-              ),
-              h(
-                NPopconfirm,
-                {
-                  "onPositive-click": () => this.handleDelete(row.id),
-                  "positive-text": "Sí",
-                  "negative-text": "No",
-                },
-                {
-                  trigger: () =>
-                    h(
-                      "button",
-                      {
-                        class: "n-button n-button--error n-button--small",
-                      },
-                      [
-                        h(NIcon, null, { default: () => h(TrashOutline) }),
-                        " Eliminar",
-                      ]
-                    ),
-                  default: () => "¿Eliminar este curso?",
-                }
-              ),
-            ]),
-        },
-      ],
     };
   },
   computed: {
@@ -164,35 +200,49 @@ export default {
     },
   },
   methods: {
+    formatDate(d) {
+      const dt = new Date(d);
+      return dt.toLocaleDateString("es-BO", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+    },
+    formatMoney(v) {
+      const n = Number(v || 0);
+      return n.toLocaleString("es-BO", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+    },
     async fetchCourses() {
       this.isLoading = true;
       try {
         const data = await CourseService.getAll();
         this.courses = data;
         this.filteredCourses = [...data];
-      } catch (err) {
-        this.message.error("Error al cargar cursos.");
+      } catch {
+        this.message?.error?.("Error al cargar cursos.");
       } finally {
         this.isLoading = false;
       }
     },
     handleSearch() {
-      const q = this.search.toLowerCase();
+      const q = this.search.trim().toLowerCase();
       this.filteredCourses = this.courses.filter((c) => {
-        return (
-          c.name.toLowerCase().includes(q) ||
-          c.parallel.toLowerCase().includes(q)
-        );
+        const name = (c.name || "").toLowerCase();
+        const parallel = (c.parallel || "").toLowerCase();
+        return name.includes(q) || parallel.includes(q);
       });
       this.currentPage = 1;
     },
     async handleDelete(id) {
       try {
         await CourseService.remove(id);
-        this.message.success("Curso eliminado.");
-        this.fetchCourses();
+        this.message?.success?.("Curso eliminado.");
+        await this.fetchCourses();
       } catch {
-        this.message.error("Error al eliminar curso.");
+        this.message?.error?.("Error al eliminar curso.");
       }
     },
   },
@@ -202,3 +252,5 @@ export default {
   },
 };
 </script>
+
+<style></style>

@@ -6,7 +6,6 @@ export async function seedModalities() {
     { id: 1, name: "ANUAL", duration_in_months: 12 },
     { id: 2, name: "MODULAR", duration_in_months: 3 },
   ];
-
   for (const modality of modalities) {
     await prisma.modality.upsert({
       where: { id: modality.id },
@@ -14,6 +13,4 @@ export async function seedModalities() {
       create: modality,
     });
   }
-
-  console.log("Modalidades creadas.");
 }

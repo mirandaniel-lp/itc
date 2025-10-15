@@ -1,49 +1,42 @@
 import axios from "axios";
+
 const API_URL = "http://localhost:3000/api/courses";
 
-const getAll = () => {
-  const token = localStorage.getItem("token");
-  return axios
-    .get(API_URL, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    .then((res) => res.data.courses);
-};
+const apiClient = axios.create({
+  baseURL: API_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+  withCredentials: true,
+});
 
-const getById = (id) => {
+apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
-  return axios
-    .get(`${API_URL}/${id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    .then((res) => res.data.course);
-};
-
-const create = (data) => {
-  const token = localStorage.getItem("token");
-  return axios.post(API_URL, data, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-};
-
-const update = (id, data) => {
-  const token = localStorage.getItem("token");
-  return axios.put(`${API_URL}/${id}`, data, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-};
-
-const remove = (id) => {
-  const token = localStorage.getItem("token");
-  return axios.delete(`${API_URL}/${id}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-};
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
 export default {
-  getAll,
-  getById,
-  create,
-  update,
-  remove,
+  async getAll() {
+    const res = await apiClient.get("/");
+    return res.data.courses;
+  },
+  async getById(id) {
+    const res = await apiClient.get(`/${id}`);
+    return res.data.course;
+  },
+  async create(data) {
+    const res = await apiClient.post("/", data);
+    return res.data.course;
+  },
+  async update(id, data) {
+    const res = await apiClient.put(`/${id}`, data);
+    return res.data.course;
+  },
+  async remove(id) {
+    const res = await apiClient.delete(`/${id}`);
+    return res.data.message;
+  },
 };

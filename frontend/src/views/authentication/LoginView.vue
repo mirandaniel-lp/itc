@@ -1,35 +1,47 @@
 <template>
   <auth-card title="Iniciar Sesión">
     <n-form :model="formData" :rules="rules" ref="formRef">
-      <n-form-item label="Email" path="email">
-        <n-input
-          v-model:value="formData.email"
-          placeholder="Ingresa Correo Electrónico"
-        />
-      </n-form-item>
+      <TextInput
+        v-model="formData.email"
+        label="Correo Electrónico"
+        placeholder="Ingresar Correo Electrónico"
+        class="my-5"
+      />
 
-      <n-form-item label="Contraseña" path="password">
-        <n-input
-          v-model:value="formData.password"
-          type="password"
-          show-password-on="click"
-          placeholder="Ingresa tu Contraseña"
-        />
-      </n-form-item>
+      <TextInput
+        v-model="formData.password"
+        label="Contraseña"
+        type="password"
+        placeholder="Ingresar Contraseña"
+        class="my-5"
+      />
 
-      <n-button type="primary" block secondary strong @click="handleLogin">
+      <PrimaryButton :loading="isLoading" @click="handleLogin" class="mt-3">
         Iniciar Sesión
-      </n-button>
+      </PrimaryButton>
 
-      <div class="text-center mt-4">
-        <n-button text @click="goToRegister">
-          ¿No tienes cuenta? Regístrate
-        </n-button>
-      </div>
-      <div class="text-center mt-4">
-        <n-button text @click="goToTeacherLogin">
-          ¿Eres docente? Inicia Sesión
-        </n-button>
+      <div class="text-center mt-5 space-y-2">
+        <p class="text-white font-extrabold">
+          ¿No tienes cuenta?
+          <n-button
+            text
+            @click="goToRegister"
+            class="text-[#3b82f6] font-extrabold hover:underline transition-colors duration-200"
+          >
+            Regístrate
+          </n-button>
+        </p>
+
+        <p class="text-white font-extrabold">
+          ¿Eres docente?
+          <n-button
+            text
+            @click="goToTeacherLogin"
+            class="text-[#3b82f6] font-extrabold hover:underline transition-colors duration-200"
+          >
+            Inicia Sesión
+          </n-button>
+        </p>
       </div>
     </n-form>
   </auth-card>
@@ -37,6 +49,8 @@
 
 <script>
 import AuthCard from "@/components/AuthCard.vue";
+import PrimaryButton from "@/components/PrimaryButton.vue";
+import TextInput from "@/components/TextInput.vue";
 import AuthService from "@/services/authService";
 import { useMessage } from "naive-ui";
 import { useRouter } from "vue-router";
@@ -45,6 +59,8 @@ export default {
   name: "LoginView",
   components: {
     AuthCard,
+    PrimaryButton,
+    TextInput,
   },
 
   setup() {
@@ -55,6 +71,7 @@ export default {
 
   data() {
     return {
+      isLoading: false,
       formData: {
         email: "",
         password: "",
@@ -74,13 +91,14 @@ export default {
 
   methods: {
     async handleLogin() {
+      this.isLoading = true;
+      await new Promise((r) => setTimeout(r, 2000));
       try {
         await this.$refs.formRef?.validate();
         const { message: responseMessage, token } = await AuthService.login(
           this.formData.email,
           this.formData.password
         );
-
         if (token) {
           this.message.success(responseMessage || "¡Bienvenido de nuevo!");
           this.$router.push("/home");
@@ -88,10 +106,11 @@ export default {
           throw new Error("No se recibió el token de autenticación");
         }
       } catch (error) {
-        console.error("Error de login:", error);
         this.message.error(
           error.message || "Error al iniciar sesión. Intenta nuevamente."
         );
+      } finally {
+        this.isLoading = false;
       }
     },
 
@@ -105,5 +124,3 @@ export default {
   },
 };
 </script>
-
-<style></style>

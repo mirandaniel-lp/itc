@@ -1,55 +1,66 @@
 <template>
   <auth-card title="Ingreso Docente">
-    <n-form :model="formData" :rules="rules" ref="formRef" class="space-y-4">
-      <n-form-item label="Carnet de Identidad" path="ci">
-        <n-input
-          v-model:value="formData.ci"
-          placeholder="Ingrese su Carnet de Identidad"
-          clearable
-          size="large"
-          autofocus
-        />
-      </n-form-item>
-      <n-form-item label="PIN" path="password">
-        <n-input
-          v-model:value="formData.password"
-          type="password"
-          show-password-on="click"
-          placeholder="Ingrese su PIN"
-          clearable
-          size="large"
-        />
-      </n-form-item>
-      <n-button type="primary" block secondary strong @click="handleLogin">
+    <n-form :model="formData" :rules="rules" ref="formRef">
+      <TextInput
+        v-model="formData.ci"
+        label="Carnet de Identidad"
+        placeholder="Ingrese su Carnet de Identidad"
+        class="my-5"
+      />
+
+      <TextInput
+        v-model="formData.password"
+        label="PIN"
+        type="password"
+        placeholder="Ingrese su PIN"
+        class="my-5"
+      />
+
+      <PrimaryButton :loading="isLoading" @click="handleLogin" class="mt-3">
         Ingresar
-      </n-button>
+      </PrimaryButton>
     </n-form>
   </auth-card>
 </template>
 
 <script>
 import AuthCard from "@/components/AuthCard.vue";
+import PrimaryButton from "@/components/PrimaryButton.vue";
+import TextInput from "@/components/TextInput.vue";
 import { useMessage } from "naive-ui";
 import TeacherService from "@/services/teacherService";
 
 export default {
   name: "TeacherLoginView",
-  components: { AuthCard },
+  components: {
+    AuthCard,
+    PrimaryButton,
+    TextInput,
+  },
+
+  setup() {
+    const message = useMessage();
+    return { message };
+  },
+
   data() {
     return {
-      formData: { ci: "", password: "" },
+      isLoading: false,
+      formData: {
+        ci: "",
+        password: "",
+      },
       rules: {
         ci: [{ required: true, message: "Ingrese su CI" }],
         password: [{ required: true, message: "Ingrese su PIN" }],
       },
     };
   },
-  setup() {
-    const message = useMessage();
-    return { message };
-  },
+
   methods: {
     async handleLogin() {
+      this.isLoading = true;
+      await new Promise((r) => setTimeout(r, 2000));
       try {
         await this.$refs.formRef?.validate();
         await TeacherService.login(this.formData);
@@ -59,6 +70,8 @@ export default {
         this.message.error(
           error.response?.data?.error || "Error al iniciar sesión."
         );
+      } finally {
+        this.isLoading = false;
       }
     },
   },

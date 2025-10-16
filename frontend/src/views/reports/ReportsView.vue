@@ -1,7 +1,73 @@
 <template>
   <app-layout>
-    <div class="min-h-screen p-4">
-      <h1 class="text-3xl font-bold mb-6 text-center">Reportes Académicos</h1>
+    <div class="min-h-screen p-4 space-y-6">
+      <h1 class="text-3xl font-bold text-center">Reportes Académicos</h1>
+
+      <div class="flex flex-wrap gap-3 items-center">
+        <n-select
+          v-model:value="filters.courseId"
+          :options="courseOptions"
+          placeholder="Curso (opcional)"
+          style="width: 260px"
+          clearable
+        />
+        <n-select
+          v-model:value="filters.modalityId"
+          :options="modalityOptions"
+          placeholder="Modalidad (opcional)"
+          style="width: 220px"
+          clearable
+        />
+        <n-select
+          v-model:value="filters.granularity"
+          :options="granularityOptions"
+          style="width: 180px"
+        />
+        <n-date-picker
+          v-model:value="filters.range"
+          type="daterange"
+          clearable
+          :is-date-disabled="(d) => d > Date.now()"
+        />
+        <n-button :loading="loading" type="primary" @click="loadAll"
+          >Actualizar</n-button
+        >
+        <div class="ml-auto flex gap-2">
+          <n-dropdown
+            trigger="click"
+            :options="exportOptions"
+            @select="handleExport"
+          >
+            <n-button quaternary>Exportar</n-button>
+          </n-dropdown>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <n-statistic label="Inscripciones" :value="kpi.enrollments" />
+        <n-statistic label="Estudiantes activos" :value="kpi.activeStudents" />
+        <n-statistic label="Promedio general" :value="kpi.avgScore" />
+        <n-statistic label="Aprobación (%)" :value="kpi.approvalRate" />
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <n-card title="Inscripciones en el tiempo">
+          <v-chart :option="chartEnrollmentsOption" autoresize class="h-72" />
+        </n-card>
+
+        <n-card title="Inscripciones por modalidad">
+          <v-chart :option="chartModalityOption" autoresize class="h-72" />
+        </n-card>
+
+        <n-card title="Top cursos por inscripciones">
+          <v-chart :option="chartTopCoursesOption" autoresize class="h-80" />
+        </n-card>
+
+        <n-card title="Distribución académica">
+          <v-chart :option="chartGradesOption" autoresize class="h-80" />
+        </n-card>
+      </div>
+
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <n-card
           title="Reporte de Matrículas"
@@ -62,15 +128,46 @@
 
 <script>
 import AppLayout from "@/layouts/AppLayout.vue";
-import { useMessage } from "naive-ui";
+import {
+  useMessage,
+  NButton,
+  NCard,
+  NSelect,
+  NDatePicker,
+  NStatistic,
+  NDropdown,
+} from "naive-ui";
+import dayjs from "dayjs";
+import pdfMake from "pdfmake/build/pdfmake";
+import pdfFonts from "pdfmake/build/vfs_fonts";
+pdfMake.vfs = pdfFonts.vfs;
+import Papa from "papaparse";
+import VueECharts from "vue-echarts";
+import { use } from "echarts/core";
+import { CanvasRenderer } from "echarts/renderers";
+import { BarChart, PieChart } from "echarts/charts";
+import {
+  GridComponent,
+  TooltipComponent,
+  LegendComponent,
+  TitleComponent,
+} from "echarts/components";
+use([
+  CanvasRenderer,
+  BarChart,
+  PieChart,
+  GridComponent,
+  TooltipComponent,
+  LegendComponent,
+  TitleComponent,
+]);
 import enrollmentService from "@/services/enrollmentService";
 import gradeService from "@/services/gradeService";
 import teacherService from "@/services/teacherService";
 import activityService from "@/services/activityService";
-import Papa from "papaparse";
-import pdfMake from "pdfmake/build/pdfmake";
-import pdfFonts from "pdfmake/build/vfs_fonts";
-pdfMake.vfs = pdfFonts.vfs;
+import courseService from "@/services/courseService";
+import modalityService from "@/services/modalityService";
+import reportService from "@/services/reportService";
 
 function getModernTableLayout() {
   return {
@@ -103,7 +200,6 @@ function getModernTableLayout() {
     },
   };
 }
-
 function getHeader(title) {
   return [
     {
@@ -128,7 +224,6 @@ function getHeader(title) {
     { text: " ", margin: [0, 0, 0, 10] },
   ];
 }
-
 function getFooter(currentPage, pageCount) {
   return {
     text: `Página ${currentPage} de ${pageCount}`,
@@ -138,7 +233,6 @@ function getFooter(currentPage, pageCount) {
     color: "#888",
   };
 }
-
 function getTableConfig(body) {
   if (body[0].length > 6) {
     return {
@@ -154,12 +248,345 @@ function getTableConfig(body) {
 
 export default {
   name: "ReportsView",
-  components: { AppLayout },
+  components: {
+    AppLayout,
+    NButton,
+    NCard,
+    NSelect,
+    NDatePicker,
+    NStatistic,
+    NDropdown,
+    "v-chart": VueECharts,
+  },
+  data() {
+    return {
+      message: null,
+      loading: false,
+      granularityOptions: [
+        { label: "Diario", value: "day" },
+        { label: "Semanal", value: "week" },
+        { label: "Mensual", value: "month" },
+        { label: "Anual", value: "year" },
+      ],
+      filters: {
+        courseId: null,
+        modalityId: null,
+        granularity: "month",
+        range: [
+          dayjs().startOf("year").valueOf(),
+          dayjs().endOf("year").valueOf(),
+        ],
+      },
+      courseOptions: [],
+      modalityOptions: [],
+      kpi: { enrollments: 0, activeStudents: 0, avgScore: 0, approvalRate: 0 },
+      enrollmentsSeries: [],
+      modalitySeries: [],
+      topCoursesSeries: [],
+      gradesDistribution: { avg: 0, approved: 0, failed: 0 },
+      exportOptions: [
+        { label: "Dashboard (PDF)", key: "pdf-dashboard" },
+        { label: "Inscripciones (CSV)", key: "csv-enrollments" },
+        { label: "Inscripciones (PDF)", key: "pdf-enrollments" },
+        { type: "divider" },
+        { label: "Docentes (CSV)", key: "csv-teachers" },
+        { label: "Docentes (PDF)", key: "pdf-teachers" },
+        { type: "divider" },
+        { label: "Calificaciones (CSV)", key: "csv-grades" },
+        { label: "Calificaciones (PDF)", key: "pdf-grades" },
+        { type: "divider" },
+        { label: "Actividades (CSV)", key: "csv-activities" },
+        { label: "Actividades (PDF)", key: "pdf-activities" },
+      ],
+    };
+  },
+  computed: {
+    chartEnrollmentsOption() {
+      const x = this.enrollmentsSeries.map((i) => i.bucket);
+      const y = this.enrollmentsSeries.map((i) => i.count);
+      return {
+        tooltip: { trigger: "axis" },
+        grid: { left: 40, right: 20, top: 40, bottom: 40 },
+        xAxis: {
+          type: "category",
+          data: x,
+          axisLabel: { rotate: x.length > 8 ? 45 : 0 },
+        },
+        yAxis: { type: "value" },
+        series: [
+          {
+            type: "bar",
+            data: y,
+            barMaxWidth: 36,
+            itemStyle: { borderRadius: [4, 4, 0, 0] },
+          },
+        ],
+      };
+    },
+    chartModalityOption() {
+      return {
+        tooltip: { trigger: "item", formatter: "{b}: {c} ({d}%)" },
+        legend: { top: "bottom" },
+        series: [
+          {
+            type: "pie",
+            radius: ["40%", "70%"],
+            label: { show: true, formatter: "{b}\n{c} ({d}%)" },
+            data: this.modalitySeries,
+          },
+        ],
+      };
+    },
+    chartTopCoursesOption() {
+      const data = [...this.topCoursesSeries].sort((a, b) => a.count - b.count);
+      return {
+        tooltip: { trigger: "axis" },
+        grid: { left: 120, right: 30, top: 20, bottom: 20 },
+        xAxis: { type: "value" },
+        yAxis: { type: "category", data: data.map((i) => i.course) },
+        series: [
+          { type: "bar", data: data.map((i) => i.count), barMaxWidth: 20 },
+        ],
+      };
+    },
+    chartGradesOption() {
+      const { approved, failed, avg } = this.gradesDistribution;
+      return {
+        tooltip: { trigger: "item" },
+        title: {
+          text: `Promedio: ${avg}`,
+          left: "center",
+          top: 0,
+          textStyle: { fontSize: 14 },
+        },
+        legend: { top: "bottom" },
+        series: [
+          {
+            name: "Estado",
+            type: "pie",
+            radius: "60%",
+            data: [
+              { name: "Aprobados", value: approved },
+              { name: "Reprobados", value: failed },
+            ],
+          },
+        ],
+      };
+    },
+  },
   setup() {
     const message = useMessage();
-
-    // Matrículas
-    const downloadEnrollments = async (type) => {
+    return { message };
+  },
+  async mounted() {
+    await this.loadFilters();
+    await this.loadAll();
+  },
+  methods: {
+    async loadFilters() {
+      const [courses, modalities] = await Promise.all([
+        courseService.getAll(),
+        modalityService.getAll(),
+      ]);
+      this.courseOptions = courses.map((c) => ({
+        label: `${c.name} (${c.parallel || "-"})`,
+        value: c.id,
+      }));
+      this.modalityOptions = modalities.map((m) => ({
+        label: m.name,
+        value: m.id,
+      }));
+    },
+    toParams() {
+      const [start, end] = this.filters.range || [null, null];
+      return {
+        courseId: this.filters.courseId || undefined,
+        modalityId: this.filters.modalityId || undefined,
+        granularity: this.filters.granularity,
+        start: start ? dayjs(start).format("YYYY-MM-DD") : undefined,
+        end: end ? dayjs(end).format("YYYY-MM-DD") : undefined,
+      };
+    },
+    async loadAll() {
+      this.loading = true;
+      try {
+        const params = this.toParams();
+        const [kpiRes, enrollRes, modRes, topRes, gradesRes] =
+          await Promise.all([
+            reportService.getKpis(params),
+            reportService.getEnrollmentsOverTime(params),
+            reportService.getEnrollmentsByModality(params),
+            reportService.getTopCourses(params),
+            reportService.getGradesDistribution(params),
+          ]);
+        this.kpi = {
+          enrollments: kpiRes?.enrollments || 0,
+          activeStudents: kpiRes?.activeStudents || 0,
+          avgScore: Number(
+            (kpiRes?.avgScore || 0).toFixed
+              ? kpiRes.avgScore.toFixed(2)
+              : kpiRes?.avgScore || 0
+          ),
+          approvalRate: Number(
+            (kpiRes?.approvalRate || 0).toFixed
+              ? kpiRes.approvalRate.toFixed(2)
+              : kpiRes?.approvalRate || 0
+          ),
+        };
+        this.enrollmentsSeries = (enrollRes || []).map((r) => ({
+          bucket: r.bucket,
+          count: Number(r.count || 0),
+        }));
+        this.modalitySeries = (modRes || []).map((r) => ({
+          name: r.modality || "Sin modalidad",
+          value: Number(r.count || 0),
+        }));
+        this.topCoursesSeries = (topRes || []).map((r) => ({
+          course: r.course || "—",
+          count: Number(r.count || 0),
+        }));
+        this.gradesDistribution = {
+          avg: Number(
+            (gradesRes?.avg || 0).toFixed
+              ? gradesRes.avg.toFixed(2)
+              : gradesRes?.avg || 0
+          ),
+          approved: Number(gradesRes?.approved || 0),
+          failed: Number(gradesRes?.failed || 0),
+        };
+      } catch (e) {
+        console.error(e);
+        this.message.error("Error al cargar reportes.");
+      } finally {
+        this.loading = false;
+      }
+    },
+    handleExport(key) {
+      switch (key) {
+        case "pdf-dashboard":
+          this.exportDashboardPdf();
+          break;
+        case "csv-enrollments":
+          this.downloadEnrollments("csv");
+          break;
+        case "pdf-enrollments":
+          this.downloadEnrollments("pdf");
+          break;
+        case "csv-teachers":
+          this.downloadTeachers("csv");
+          break;
+        case "pdf-teachers":
+          this.downloadTeachers("pdf");
+          break;
+        case "csv-grades":
+          this.downloadGrades("csv");
+          break;
+        case "pdf-grades":
+          this.downloadGrades("pdf");
+          break;
+        case "csv-activities":
+          this.downloadActivities("csv");
+          break;
+        case "pdf-activities":
+          this.downloadActivities("pdf");
+          break;
+      }
+    },
+    header(title) {
+      return [
+        {
+          text: title,
+          style: "header",
+          alignment: "center",
+          margin: [0, 0, 0, 8],
+        },
+        {
+          canvas: [
+            {
+              type: "line",
+              x1: 0,
+              y1: 0,
+              x2: 520,
+              y2: 0,
+              lineWidth: 1,
+              lineColor: "#1976d2",
+            },
+          ],
+        },
+        { text: " ", margin: [0, 0, 0, 6] },
+      ];
+    },
+    exportDashboardPdf() {
+      const doc = {
+        content: [
+          ...this.header("Dashboard Académico"),
+          {
+            columns: [
+              { text: `Inscripciones: ${this.kpi.enrollments}`, width: "25%" },
+              { text: `Activos: ${this.kpi.activeStudents}`, width: "25%" },
+              { text: `Promedio: ${this.kpi.avgScore}`, width: "25%" },
+              { text: `Aprobación: ${this.kpi.approvalRate}%`, width: "25%" },
+            ],
+            margin: [0, 0, 0, 10],
+          },
+          {
+            text: "Inscripciones en el tiempo",
+            bold: true,
+            margin: [0, 8, 0, 4],
+          },
+          {
+            table: {
+              widths: ["*", "auto"],
+              body: [
+                ["Periodo", "Inscripciones"],
+                ...this.enrollmentsSeries.map((i) => [i.bucket, i.count]),
+              ],
+            },
+            layout: "lightHorizontalLines",
+            margin: [0, 0, 0, 10],
+          },
+          {
+            text: "Inscripciones por modalidad",
+            bold: true,
+            margin: [0, 8, 0, 4],
+          },
+          {
+            table: {
+              widths: ["*", "auto"],
+              body: [
+                ["Modalidad", "Inscripciones"],
+                ...this.modalitySeries.map((i) => [i.name, i.value]),
+              ],
+            },
+            layout: "lightHorizontalLines",
+            margin: [0, 0, 0, 10],
+          },
+          { text: "Top cursos", bold: true, margin: [0, 8, 0, 4] },
+          {
+            table: {
+              widths: ["*", "auto"],
+              body: [
+                ["Curso", "Inscripciones"],
+                ...this.topCoursesSeries.map((i) => [i.course, i.count]),
+              ],
+            },
+            layout: "lightHorizontalLines",
+            margin: [0, 0, 0, 10],
+          },
+          { text: "Distribución académica", bold: true, margin: [0, 8, 0, 4] },
+          {
+            ul: [
+              `Promedio: ${this.gradesDistribution.avg}`,
+              `Aprobados: ${this.gradesDistribution.approved}`,
+              `Reprobados: ${this.gradesDistribution.failed}`,
+            ],
+          },
+        ],
+        styles: { header: { fontSize: 18, bold: true, color: "#1976d2" } },
+      };
+      pdfMake.createPdf(doc).download("dashboard_academico.pdf");
+    },
+    async downloadEnrollments(type) {
       try {
         const enrollments = await enrollmentService.getAll();
         const body = [
@@ -176,7 +603,7 @@ export default {
             e.id || "",
             `${e.student?.name || ""} ${e.student?.last_name || ""} ${
               e.student?.second_last_name || ""
-            }`,
+            }`.trim(),
             e.student?.ci || "",
             `${e.course?.name || ""} (${e.course?.parallel || ""})`,
             e.enrollment_date?.substring(0, 10) || "",
@@ -190,7 +617,7 @@ export default {
               ID: e.id,
               Estudiante: `${e.student?.name || ""} ${
                 e.student?.last_name || ""
-              } ${e.student?.second_last_name || ""}`,
+              } ${e.student?.second_last_name || ""}`.trim(),
               CI: e.student?.ci || "",
               Curso: `${e.course?.name || ""} (${e.course?.parallel || ""})`,
               "Fecha de Matrícula": e.enrollment_date || "",
@@ -213,11 +640,7 @@ export default {
             content: [
               ...getHeader("Reporte de Matrículas"),
               {
-                table: {
-                  headerRows: 1,
-                  widths: tableConfig.widths,
-                  body,
-                },
+                table: { headerRows: 1, widths: tableConfig.widths, body },
                 layout: getModernTableLayout(),
                 dontBreakRows: true,
               },
@@ -231,25 +654,21 @@ export default {
                 margin: [0, 0, 0, 10],
               },
             },
-            defaultStyle: {
-              fontSize: 10,
-              noWrap: false,
-            },
+            defaultStyle: { fontSize: 10, noWrap: false },
           };
           pdfMake.createPdf(docDefinition).download("reporte_matriculas.pdf");
         }
       } catch (err) {
         console.error("Error PDF Matrículas:", err);
-        message.error(
+        this.message.error(
           "Error al generar el reporte de matrículas: " + (err.message || err)
         );
       }
-    };
-
-    // Calificaciones
-    const downloadGrades = async (type) => {
+    },
+    async downloadGrades(type) {
       try {
-        const grades = await gradeService.getAll();
+        const res = await gradeService.getAll();
+        const grades = res?.grades || res || [];
         const body = [
           [
             "ID",
@@ -266,7 +685,7 @@ export default {
             g.id || "",
             `${g.student?.name || ""} ${g.student?.last_name || ""} ${
               g.student?.second_last_name || ""
-            }`,
+            }`.trim(),
             g.student?.ci || "",
             `${g.activity?.course?.name || ""} (${
               g.activity?.course?.parallel || ""
@@ -284,7 +703,7 @@ export default {
               ID: g.id,
               Estudiante: `${g.student?.name || ""} ${
                 g.student?.last_name || ""
-              } ${g.student?.second_last_name || ""}`,
+              } ${g.student?.second_last_name || ""}`.trim(),
               CI: g.student?.ci || "",
               Curso: `${g.activity?.course?.name || ""} (${
                 g.activity?.course?.parallel || ""
@@ -304,7 +723,6 @@ export default {
           link.click();
           document.body.removeChild(link);
         } else if (type === "pdf") {
-          // Siempre vertical para calificaciones
           const docDefinition = {
             pageOrientation: "portrait",
             footer: getFooter,
@@ -329,10 +747,7 @@ export default {
                 margin: [0, 0, 0, 10],
               },
             },
-            defaultStyle: {
-              fontSize: 10,
-              noWrap: false,
-            },
+            defaultStyle: { fontSize: 10, noWrap: false },
           };
           pdfMake
             .createPdf(docDefinition)
@@ -340,15 +755,13 @@ export default {
         }
       } catch (err) {
         console.error("Error PDF Calificaciones:", err);
-        message.error(
+        this.message.error(
           "Error al generar el reporte de calificaciones: " +
             (err.message || err)
         );
       }
-    };
-
-    // Docentes
-    const downloadTeachers = async (type) => {
+    },
+    async downloadTeachers(type) {
       try {
         const teachers = await teacherService.getAll();
         const body = [
@@ -366,7 +779,9 @@ export default {
           ],
           ...teachers.map((t) => [
             t.id || "",
-            `${t.name || ""} ${t.last_name || ""} ${t.second_last_name || ""}`,
+            `${t.name || ""} ${t.last_name || ""} ${
+              t.second_last_name || ""
+            }`.trim(),
             t.ci || "",
             t.email || "",
             t.phone || "",
@@ -383,7 +798,7 @@ export default {
               ID: t.id,
               "Nombre Completo": `${t.name || ""} ${t.last_name || ""} ${
                 t.second_last_name || ""
-              }`,
+              }`.trim(),
               CI: t.ci || "",
               Email: t.email || "",
               Teléfono: t.phone || "",
@@ -411,11 +826,7 @@ export default {
             content: [
               ...getHeader("Reporte de Docentes"),
               {
-                table: {
-                  headerRows: 1,
-                  widths: tableConfig.widths,
-                  body,
-                },
+                table: { headerRows: 1, widths: tableConfig.widths, body },
                 layout: getModernTableLayout(),
                 dontBreakRows: true,
               },
@@ -429,23 +840,18 @@ export default {
                 margin: [0, 0, 0, 10],
               },
             },
-            defaultStyle: {
-              fontSize: 10,
-              noWrap: false,
-            },
+            defaultStyle: { fontSize: 10, noWrap: false },
           };
           pdfMake.createPdf(docDefinition).download("reporte_docentes.pdf");
         }
       } catch (err) {
         console.error("Error PDF Docentes:", err);
-        message.error(
+        this.message.error(
           "Error al generar el reporte de docentes: " + (err.message || err)
         );
       }
-    };
-
-    // Actividades
-    const downloadActivities = async (type) => {
+    },
+    async downloadActivities(type) {
       try {
         const activities = await activityService.getAll();
         const body = [
@@ -456,7 +862,7 @@ export default {
             `${a.course?.name || ""} (${a.course?.parallel || ""})`,
             `${a.teacher?.name || ""} ${a.teacher?.last_name || ""} ${
               a.teacher?.second_last_name || ""
-            }`,
+            }`.trim(),
             a.status ? "Activo" : "Inactivo",
             a.created_at?.substring(0, 10) || "",
           ]),
@@ -469,7 +875,7 @@ export default {
               Curso: `${a.course?.name || ""} (${a.course?.parallel || ""})`,
               Docente: `${a.teacher?.name || ""} ${
                 a.teacher?.last_name || ""
-              } ${a.teacher?.second_last_name || ""}`,
+              } ${a.teacher?.second_last_name || ""}`.trim(),
               Estado: a.status ? "Activo" : "Inactivo",
               "Fecha de Creación": a.created_at?.substring(0, 10) || "",
             }))
@@ -489,11 +895,7 @@ export default {
             content: [
               ...getHeader("Reporte de Actividades"),
               {
-                table: {
-                  headerRows: 1,
-                  widths: tableConfig.widths,
-                  body,
-                },
+                table: { headerRows: 1, widths: tableConfig.widths, body },
                 layout: getModernTableLayout(),
                 dontBreakRows: true,
               },
@@ -507,27 +909,26 @@ export default {
                 margin: [0, 0, 0, 10],
               },
             },
-            defaultStyle: {
-              fontSize: 10,
-              noWrap: false,
-            },
+            defaultStyle: { fontSize: 10, noWrap: false },
           };
           pdfMake.createPdf(docDefinition).download("reporte_actividades.pdf");
         }
       } catch (err) {
         console.error("Error PDF Actividades:", err);
-        message.error(
+        this.message.error(
           "Error al generar el reporte de actividades: " + (err.message || err)
         );
       }
-    };
-
-    return {
-      downloadEnrollments,
-      downloadGrades,
-      downloadTeachers,
-      downloadActivities,
-    };
+    },
   },
 };
 </script>
+
+<style scoped>
+.h-72 {
+  height: 18rem;
+}
+.h-80 {
+  height: 20rem;
+}
+</style>

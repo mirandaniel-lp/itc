@@ -251,18 +251,13 @@ export default {
       },
       {
         label: "Calificaciones",
-        key: "/grades",
+        key: "/grades/by-activity",
         icon: renderIcon(SchoolOutline),
-        children: [
-          { label: "Lista de Calificaciones", key: "/grades" },
-          { label: "Registrar Calificación", key: "/grades/create" },
-        ],
       },
       { label: "Reportes", key: "/reports", icon: renderIcon(PieChartOutline) },
     ]);
 
     const currentMenuKey = computed(() => route.path);
-
     function onMenuSelect(key) {
       if (typeof key === "string") {
         router.push(key);
@@ -282,6 +277,7 @@ export default {
       grades: "Calificaciones",
       create: "Nuevo",
       edit: "Editar",
+      "by-activity": "Gestión de Calificaciones",
     };
 
     const breadcrumbs = computed(() => {

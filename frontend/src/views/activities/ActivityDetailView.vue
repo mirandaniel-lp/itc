@@ -1,71 +1,271 @@
 <template>
   <app-layout>
-    <div class="min-h-screen p-8">
-      <div class="max-w-6xl mx-auto space-y-10">
-        <div class="flex flex-col gap-6">
-          <h1 class="text-4xl font-extrabold text-white">
+    <div class="mx-auto max-w-6xl p-6 md:p-8 space-y-8">
+      <div class="flex items-start justify-between gap-4">
+        <div class="space-y-2">
+          <p class="text-xs uppercase tracking-widest text-[#7aa2ff]/70">
+            Actividad
+          </p>
+          <h1 class="text-3xl md:text-4xl font-extrabold">
             {{ activity?.title || "Detalle de Actividad" }}
           </h1>
-          <div v-if="activity?.description" class="text-lg text-gray-300 mb-6">
-            {{ activity.description }}
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-gray-300">
-            <div>
-              <span class="font-semibold text-gray-200">Curso: </span>
-              <span class="text-gray-400">{{ activity?.course?.name }} - {{ activity?.course?.parallel }}</span>
-            </div>
-            <div>
-              <span class="font-semibold text-gray-200">Modalidad: </span>
-              <span class="text-gray-400">{{ activity?.course?.modality?.name || "No especificado" }}</span>
-            </div>
-            <div>
-              <span class="font-semibold text-gray-200">Docente: </span>
-              <span class="text-gray-400">{{ activity?.teacher?.name }} {{ activity?.teacher?.last_name }}</span>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="isLoading" class="text-center py-10">
-          <n-spin size="large" class="text-white">Cargando...</n-spin>
-        </div>
-
-        <div v-else-if="error" class="text-center py-10 text-red-500">
-          {{ error }}
-        </div>
-
-        <div v-else>
-          <div class="overflow-hidden rounded-2xl bg-[#2a3541] shadow-xl backdrop-blur-sm">
-            <n-data-table
-              :columns="columns"
-              :data="grades"
-              :bordered="false"
-              :striped="true"
-              size="large"
-              :pagination="false"
-              :loading="isLoading"
-              class="transition-all duration-300 ease-in-out mt-6 rounded-2xl"
-            />
+          <div class="flex flex-wrap items-center gap-2 text-sm">
+            <span
+              class="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5"
+            >
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M8 7V3m8 4V3M5 11h14M7 21h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              <span class="text-gray-300">Vence:</span>
+              <strong class="text-white">{{ formattedDeadline }}</strong>
+            </span>
+            <span
+              :class="[
+                'inline-flex items-center gap-2 rounded-lg px-3 py-1.5 border',
+                statusBadge.border,
+                statusBadge.bg,
+                statusBadge.text,
+              ]"
+            >
+              <span
+                class="h-2.5 w-2.5 rounded-full"
+                :class="statusBadge.dot"
+              ></span>
+              {{ statusText }}
+            </span>
           </div>
         </div>
+        <div class="shrink-0 hidden sm:flex flex-col items-end gap-2 text-sm">
+          <span
+            class="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5"
+          >
+            <span class="text-gray-300">Curso:</span>
+            <strong class="ml-1"
+              >{{ activity?.course?.name }} -
+              {{ activity?.course?.parallel }}</strong
+            >
+          </span>
+          <span
+            class="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5"
+          >
+            <span class="text-gray-300">Modalidad:</span>
+            <strong class="ml-1">{{
+              activity?.course?.modality?.name || "No especificado"
+            }}</strong>
+          </span>
+          <span
+            class="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5"
+          >
+            <span class="text-gray-300">Docente:</span>
+            <strong class="ml-1"
+              >{{ activity?.teacher?.name }}
+              {{ activity?.teacher?.last_name }}</strong
+            >
+          </span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 space-y-6">
+          <section
+            class="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-5"
+          >
+            <div class="flex items-center justify-between">
+              <h2 class="text-lg font-bold">Descripción</h2>
+              <span class="text-xs text-gray-400"
+                >{{ pointsTotal }} puntos</span
+              >
+            </div>
+            <p class="mt-3 text-gray-300 leading-relaxed">
+              {{ activity?.description || "Sin descripción." }}
+            </p>
+          </section>
+
+          <section
+            class="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-5"
+          >
+            <div class="flex items-center justify-between">
+              <h2 class="text-lg font-bold">Estudiantes</h2>
+              <button
+                @click="printReport"
+                class="rounded-md bg-gradient-to-r from-[#3b82f6] to-[#2563eb] px-3 py-1.5 text-xs font-bold text-white hover:from-[#2563eb] hover:to-[#3b82f6] transition"
+              >
+                Imprimir
+              </button>
+            </div>
+            <div class="mt-3 overflow-hidden rounded-xl border border-white/10">
+              <table class="w-full text-sm">
+                <thead class="bg-white/5">
+                  <tr class="text-left text-gray-300">
+                    <th class="px-4 py-3 w-10">#</th>
+                    <th class="px-4 py-3">Estudiante</th>
+                    <th class="px-4 py-3 text-center">Nota</th>
+                    <th class="px-4 py-3 text-right">Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="(g, i) in grades"
+                    :key="g.id"
+                    class="border-t border-white/5 hover:bg-white/5 transition"
+                  >
+                    <td class="px-4 py-3 text-gray-400">{{ i + 1 }}</td>
+                    <td class="px-4 py-3">
+                      <div class="flex items-center gap-2">
+                        <img
+                          v-if="g.studentImage"
+                          :src="avatarSrc(g.studentImage)"
+                          class="h-8 w-8 rounded-full object-cover ring-2 ring-white/10"
+                          alt=""
+                        />
+                        <div
+                          v-else
+                          class="h-8 w-8 rounded-full bg-white/10 ring-2 ring-white/10"
+                        ></div>
+                        <span class="font-medium">{{ g.studentName }}</span>
+                      </div>
+                    </td>
+                    <td class="px-4 py-3 text-center">
+                      <span
+                        :class="[
+                          Number(g.score) >= 51
+                            ? 'text-emerald-400'
+                            : 'text-rose-400',
+                          'font-semibold',
+                        ]"
+                      >
+                        {{ g.score }}
+                      </span>
+                    </td>
+                    <td class="px-4 py-3">
+                      <div class="flex justify-end">
+                        <template v-if="editingRow === g.id">
+                          <div class="flex items-center gap-2">
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              v-model.number="editingScore"
+                              class="w-20 rounded-md bg-[#0f1626] border border-white/10 px-2 py-1 text-center focus:outline-none focus:ring-2 focus:ring-[#3b82f6]/40"
+                            />
+                            <button
+                              @click="saveEdit(g)"
+                              class="rounded-md bg-gradient-to-r from-[#34d399] to-[#10b981] px-3 py-1.5 text-xs font-bold text-white hover:from-[#10b981] hover:to-[#34d399] transition"
+                            >
+                              Guardar
+                            </button>
+                            <button
+                              @click="cancelEdit"
+                              class="rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-gray-200 hover:bg-white/10 transition"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </template>
+                        <template v-else>
+                          <button
+                            @click="startEdit(g)"
+                            class="rounded-md bg-gradient-to-r from-[#1aff94] to-[#02cc6e] px-3 py-1.5 text-xs font-bold text-white hover:from-[#1aff94] hover:to-[#1aff94] transition"
+                          >
+                            Editar nota
+                          </button>
+                        </template>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr v-if="!grades || grades.length === 0">
+                    <td colspan="4" class="px-4 py-6 text-center text-gray-400">
+                      Sin calificaciones registradas.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="text-xs text-gray-400 mt-4">
+              Promedio general de los estudiantes:
+              <span
+                class="font-bold"
+                :class="
+                  averageScore >= 51 ? 'text-emerald-400' : 'text-rose-400'
+                "
+              >
+                {{ averageScore }}
+              </span>
+              puntos
+            </p>
+          </section>
+        </div>
+
+        <aside class="space-y-6">
+          <section class="rounded-2xl border border-white/10 bg-[#101826] p-5">
+            <h3 class="text-lg font-bold">Resumen</h3>
+            <div class="mt-4 space-y-3 text-sm">
+              <div class="flex items-center justify-between">
+                <span class="text-gray-400">Paralelo</span>
+                <span class="font-semibold">
+                  ({{ activity?.course?.parallel }})</span
+                >
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-gray-400">Docente</span>
+                <span class="font-semibold"
+                  >{{ activity?.teacher?.name }}
+                  {{ activity?.teacher?.last_name }}</span
+                >
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-gray-400">Modalidad</span>
+                <span class="font-semibold">{{
+                  activity?.course?.modality?.name || "—"
+                }}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-gray-400">Puntaje</span>
+                <span class="font-semibold">{{ pointsTotal }}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-gray-400">Promedio</span>
+                <span
+                  class="font-semibold"
+                  :class="
+                    averageScore >= 51 ? 'text-emerald-400' : 'text-rose-400'
+                  "
+                  >{{ averageScore }}</span
+                >
+              </div>
+            </div>
+          </section>
+        </aside>
       </div>
     </div>
   </app-layout>
 </template>
 
 <script>
-import { h } from "vue";
-import { NDataTable, NSpin, useMessage } from "naive-ui";
 import AppLayout from "@/layouts/AppLayout.vue";
 import ActivityService from "@/services/activityService";
 import GradeService from "@/services/gradeService";
+import { useMessage } from "naive-ui";
+import * as pdfMake from "pdfmake/build/pdfmake";
+import * as pdfFonts from "pdfmake/build/vfs_fonts";
+
+pdfMake.vfs = pdfFonts.vfs;
 
 export default {
   name: "ActivityDetailView",
-  components: { AppLayout, NDataTable, NSpin },
+  components: { AppLayout },
   data() {
     return {
       activity: null,
       grades: [],
+      checklist: [],
+      selectedFile: null,
       isLoading: false,
       error: null,
       editingRow: null,
@@ -74,158 +274,130 @@ export default {
     };
   },
   computed: {
-    columns() {
-      return [
-        {
-          title: "#",
-          key: "index",
-          width: 60,
-          render: (row, i) => i + 1,
-        },
-        {
-          title: "Estudiante",
-          key: "studentName",
-          render: (row) =>
-            h("div", { class: "flex items-center gap-2" }, [
-              row.studentImage
-                ? h("img", {
-                    src: row.studentImage.startsWith("http")
-                      ? row.studentImage
-                      : `http://localhost:3000${row.studentImage}`,
-                    alt: "Foto",
-                    class: "w-10 h-10 rounded-full object-cover border border-[#3b82f6]/40 shadow-lg",
-                  })
-                : h("span", { class: "w-10 h-10 flex items-center justify-center rounded-full bg-gray-300 text-gray-500 border" }, [
-                    h("svg", { xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", class: "w-5 h-5" }, [
-                      h("path", {
-                        "stroke-linecap": "round",
-                        "stroke-linejoin": "round",
-                        "stroke-width": "2",
-                        d: "M5.121 17.804A9 9 0 1112 21a9 9 0 01-6.879-3.196zM15 11a3 3 0 11-6 0 3 3 0 016 0z",
-                      }),
-                    ]),
-                  ]),
-              h("span", { class: "font-medium" }, row.studentName),
-            ]),
-        },
-        {
-          title: "Nota",
-          key: "score",
-          width: 120,
-          render: (row) =>
-            this.editingRow === row.id
-              ? h("input", {
-                  type: "number",
-                  min: 0,
-                  max: 100,
-                  value: this.editingScore,
-                  class: "p-3 rounded-md bg-[#333] text-white border border-[#444] focus:outline-none focus:ring-2 focus:ring-blue-500",
-                  autofocus: true,
-                  placeholder: "Ingrese nota",
-                  onInput: (e) => (this.editingScore = e.target.value),
-                  onKeyup: (e) => {
-                    if (e.key === "Enter") this.saveEdit(row);
-                  },
-                })
-              : h("span", {
-                  class: row.score >= 51 ? "text-green-600 font-semibold" : "text-red-600 font-semibold",
-                }, row.score),
-        },
-        {
-          title: "Observación",
-          key: "feedback",
-          render: (row) => row.feedback ? h("span", { class: "text-gray-500" }, row.feedback) : "-",
-        },
-        {
-          title: "Acciones",
-          key: "actions",
-          width: 120,
-          render: (row) =>
-            this.editingRow === row.id
-              ? h(
-                  "button",
-                  {
-                    type: "button",
-                    class:
-                      "bg-gradient-to-r from-[#34d399] to-[#10b981] text-white rounded-md py-2 px-4 transition-all hover:from-[#10b981] hover:to-[#34d399] shadow-lg",
-                    onClick: () => this.saveEdit(row),
-                  },
-                  "Guardar"
-                )
-              : h(
-                  "button",
-                  {
-                    type: "button",
-                    class:
-                      "bg-gradient-to-r from-[#3b82f6] to-[#2563eb] text-white rounded-md py-2 px-4 transition-all hover:from-[#2563eb] hover:to-[#3b82f6] shadow-lg",
-                    onClick: () => this.startEdit(row),
-                  },
-                  "Editar Nota"
-                ),
-        },
-      ];
+    formattedDeadline() {
+      const d = this.activity?.deadline;
+      if (!d) return "—";
+      const date = new Date(d);
+      return date.toLocaleString();
+    },
+    statusText() {
+      if (!this.activity?.deadline) return "Sin fecha";
+      return new Date(this.activity.deadline) > new Date()
+        ? "Abierta"
+        : "Cerrada";
+    },
+    statusBadge() {
+      const open = this.statusText === "Abierta";
+      return {
+        bg: open ? "bg-emerald-500/10" : "bg-rose-500/10",
+        text: open ? "text-emerald-300" : "text-rose-300",
+        border: open ? "border-emerald-400/20" : "border-rose-400/20",
+        dot: open ? "bg-emerald-400" : "bg-rose-400",
+      };
+    },
+    pointsTotal() {
+      return this.activity?.points ?? 100;
+    },
+    averageScore() {
+      if (!this.grades.length) return 0;
+      const total = this.grades.reduce((a, g) => a + (Number(g.score) || 0), 0);
+      return (total / this.grades.length).toFixed(2);
     },
   },
   methods: {
-    async fetchActivity() {
-      this.isLoading = true;
-      this.error = null;
-      try {
-        const activityId = this.$route.params.id || this.$route.query.activityId;
-        const res = await ActivityService.getById(activityId);
-        this.activity = res;
-        if (!res) {
-          this.error = "No se encontró la actividad.";
-        }
-      } catch (e) {
-        console.error("Error al cargar actividad:", e);
-        this.error = "Error al cargar actividad.";
-        if (this.message) this.message.error("Error al cargar actividad.");
-      } finally {
-        this.isLoading = false;
-      }
-    },
-    async fetchGrades() {
-      this.isLoading = true;
-      try {
-        const activityId = this.$route.params.id || this.$route.query.activityId;
-        const res = await GradeService.getGradesByActivity(activityId);
-        this.grades = res.data.grades.map((g) => ({
-          id: g.id,
-          studentName: `${g.student?.name || ""} ${g.student?.last_name || ""}`,
-          studentImage: g.student?.image || null,
-          score: g.score !== null && g.score !== undefined ? Number(g.score) : 0,
-          feedback: g.feedback,
-        }));
-        if (!this.grades.length) {
-          this.error = "No hay calificaciones registradas para esta actividad.";
-        }
-      } catch (e) {
-        console.error("Error al cargar calificaciones:", e);
-        this.error = "Error al cargar calificaciones.";
-        if (this.message) this.message.error("Error al cargar calificaciones.");
-      } finally {
-        this.isLoading = false;
-      }
+    avatarSrc(path) {
+      return path?.startsWith("http") ? path : `http://localhost:3000${path}`;
     },
     startEdit(row) {
       this.editingRow = row.id;
-      this.editingScore = typeof row.score === "number" ? row.score : Number(row.score) || 0;
+      this.editingScore = Number(row.score) || 0;
+    },
+    cancelEdit() {
+      this.editingRow = null;
+      this.editingScore = null;
     },
     async saveEdit(row) {
       const score = Number(this.editingScore);
-      if (score === null || score === undefined || isNaN(score) || score < 0 || score > 100) {
-        this.message.error("La nota debe estar entre 0 y 100.");
+      if (isNaN(score) || score < 0 || score > 100) {
+        this.message?.error("La nota debe estar entre 0 y 100");
         return;
       }
       try {
         await GradeService.updateGrade(row.id, { score });
-        this.message.success("Nota actualizada.");
+        this.message?.success("Nota actualizada");
         this.editingRow = null;
         await this.fetchGrades();
       } catch {
-        this.message.error("Error al actualizar nota.");
+        this.message?.error("Error al actualizar nota");
       }
+    },
+    async fetchActivity() {
+      try {
+        const activityId =
+          this.$route.params.id || this.$route.query.activityId;
+        const res = await ActivityService.getById(activityId);
+        this.activity = res;
+        this.checklist = res?.instructions || [];
+      } catch (e) {
+        this.error = "Error al cargar actividad.";
+      }
+    },
+    async fetchGrades() {
+      try {
+        const activityId =
+          this.$route.params.id || this.$route.query.activityId;
+        const res = await GradeService.getGradesByActivity(activityId);
+        this.grades = (res?.data?.grades || []).map((g) => ({
+          id: g.id,
+          studentName: `${g.student?.name || ""} ${
+            g.student?.last_name || ""
+          }`.trim(),
+          studentImage: g.student?.image || null,
+          score: g.score != null ? Number(g.score) : 0,
+          feedback: g.feedback || "",
+        }));
+      } catch (e) {
+        this.error = "Error al cargar calificaciones.";
+      }
+    },
+    printReport() {
+      const doc = {
+        content: [
+          {
+            text: this.activity?.title || "Reporte de Actividad",
+            style: "header",
+          },
+          {
+            text: `Curso: ${this.activity?.course?.name || ""} - ${
+              this.activity?.course?.parallel || ""
+            }`,
+            margin: [0, 5, 0, 0],
+          },
+          {
+            text: `Docente: ${this.activity?.teacher?.name || ""} ${
+              this.activity?.teacher?.last_name || ""
+            }`,
+            margin: [0, 0, 0, 10],
+          },
+          {
+            text: `Promedio general: ${this.averageScore}`,
+            margin: [0, 0, 0, 10],
+          },
+          {
+            table: {
+              widths: ["auto", "*", "auto"],
+              body: [
+                ["#", "Estudiante", "Nota"],
+                ...this.grades.map((g, i) => [i + 1, g.studentName, g.score]),
+              ],
+            },
+          },
+        ],
+        styles: {
+          header: { fontSize: 16, bold: true, margin: [0, 0, 0, 10] },
+        },
+      };
+      pdfMake.createPdf(doc).open();
     },
   },
   async mounted() {

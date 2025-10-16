@@ -67,3 +67,22 @@ export const deleteCourse = async (req, res) => {
     res.status(400).json({ error: "Error al eliminar curso." });
   }
 };
+
+export const getEnrolledStudentsByCourse = async (req, res) => {
+  const { courseId } = req.params;
+  try {
+    const enrollments = await prisma.enrollment.findMany({
+      where: {
+        courseId: BigInt(courseId),
+        status: true,
+        student: { status: true },
+      },
+      include: { student: true },
+      orderBy: { studentId: "asc" },
+    });
+    const students = enrollments.map((e) => e.student);
+    res.json({ students: serialize(students) });
+  } catch (err) {
+    res.status(500).json({ error: "Error al listar estudiantes del curso." });
+  }
+};

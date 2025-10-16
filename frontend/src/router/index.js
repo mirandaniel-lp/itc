@@ -115,6 +115,11 @@ const routes = [
     component: () => import("@/views/grades/ListGradesView.vue"),
   },
   {
+    path: "/grades/by-activity",
+    name: "GradesByActivity",
+    component: () => import("@/views/grades/GradesByActivityView.vue"),
+  },
+  {
     path: "/reports",
     name: "reports",
     component: () => import("@/views/reports/ReportsView.vue"),

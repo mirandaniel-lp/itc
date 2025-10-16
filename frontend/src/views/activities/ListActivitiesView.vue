@@ -27,15 +27,6 @@
             size="large"
             class="bg-[#0f172a]/70 border-[#334155] rounded-lg"
           />
-          <n-select
-            v-model:value="selectedModality"
-            :options="modalityOptions"
-            placeholder="Filtrar por modalidad"
-            @update:value="fetchActivities"
-            style="max-width: 300px"
-            size="large"
-            class="bg-[#0f172a]/70 border-[#334155] rounded-lg"
-          />
         </div>
 
         <div
@@ -67,7 +58,7 @@
 </template>
 
 <script>
-import { h } from "vue"; // Importa la función `h` para renderizar dinámicamente.
+import { h } from "vue";
 import { NDataTable, NPagination, NSelect, useMessage } from "naive-ui";
 import AppLayout from "@/layouts/AppLayout.vue";
 import ActivityService from "@/services/activityService";
@@ -115,7 +106,8 @@ export default {
             h(
               "button",
               {
-                class: "n-button n-button--info n-button--small",
+                class:
+                  "px-3 py-1.5 rounded-lg text-sm font-bold bg-gradient-to-r from-[#1e3a8a] to-[#2563eb] text-white hover:shadow-[0_0_15px_rgba(37,99,235,0.5)] transition-all",
                 onClick: () => this.$router.push(`/activities/${row.id}`),
               },
               "Ver Calificaciones"

@@ -1,6 +1,7 @@
 import axios from "axios";
 
 const API_URL = "http://localhost:3000/api/students";
+const COURSES_API_URL = "http://localhost:3000/api/courses";
 
 const apiClient = axios.create({
   baseURL: API_URL,
@@ -42,5 +43,13 @@ export default {
   async remove(id) {
     const res = await apiClient.delete(`/${id}`);
     return res.data.message;
+  },
+  async getByCourse(courseId) {
+    const token = localStorage.getItem("token");
+    const res = await axios.get(`${COURSES_API_URL}/${courseId}/students`, {
+      headers: { Authorization: `Bearer ${token}` },
+      withCredentials: true,
+    });
+    return res.data.students;
   },
 };

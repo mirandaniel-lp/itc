@@ -11,7 +11,7 @@ import modalityRoutes from "./routes/modalityRoutes.js";
 import activityRoutes from "./routes/activityRoutes.js";
 import teacherDashboardRoutes from "./routes/teacherDashboardRoutes.js";
 import gradeRoutes from "./routes/gradeRoutes.js";
-
+import reportsRoutes from "./routes/reportsRoutes.js";
 import cors from "cors";
 import path from "path";
 
@@ -40,6 +40,7 @@ app.use("/api/modalities", modalityRoutes);
 app.use("/api/activities", activityRoutes);
 app.use("/api/grades", gradeRoutes);
 app.use("/api/teachers/dashboard", teacherDashboardRoutes);
+app.use("/api/reports", reportsRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);

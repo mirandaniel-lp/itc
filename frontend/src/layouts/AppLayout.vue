@@ -19,7 +19,6 @@
           class="w-14 h-14 object-contain brightness-0 invert drop-shadow-[0_0_8px_rgba(255,255,255,0.6)]"
         />
       </div>
-
       <n-menu
         :value="currentMenuKey"
         :options="menuOptions"
@@ -28,7 +27,6 @@
         :indent="18"
         :root-indent="18"
         @update:value="onMenuSelect"
-        class="[&_li.n-menu-item--selected]:bg-gradient-to-r [&_li.n-menu-item--selected]:from-[#1e3a8a] [&_li.n-menu-item--selected]:via-[#1d4ed8] [&_li.n-menu-item--selected]:to-[#2563eb] [&_li.n-menu-item--selected]:text-white [&_li.n-menu-item--selected]:font-extrabold [&_li.n-menu-item--selected]:shadow-[0_0_15px_rgba(37,99,235,0.45)] [&_li.n-menu-item--selected]:rounded-lg transition-all duration-300"
       />
     </n-layout-sider>
 
@@ -254,6 +252,11 @@ export default {
         key: "/grades/by-activity",
         icon: renderIcon(SchoolOutline),
       },
+      {
+        label: "Asistencias",
+        key: "/attendances",
+        icon: renderIcon(SchoolOutline),
+      },
       { label: "Reportes", key: "/reports", icon: renderIcon(PieChartOutline) },
     ]);
 
@@ -275,7 +278,8 @@ export default {
       activities: "Actividades",
       reports: "Reportes",
       grades: "Calificaciones",
-      create: "Nuevo",
+      attendances: "Asistencias",
+      create: "Registrar",
       edit: "Editar",
       "by-activity": "Gestión de Calificaciones",
     };

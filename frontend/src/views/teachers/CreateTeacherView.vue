@@ -2,157 +2,188 @@
   <app-layout>
     <div class="min-h-screen bg-[#0f172a] p-10 text-white flex justify-center">
       <div
-        class="w-full max-w-5xl bg-[#1e293b]/90 border border-[#334155] shadow-[0_8px_30px_rgba(0,0,0,0.6)] rounded-2xl p-10 backdrop-blur-sm"
+        class="w-full max-w-5xl bg-[#1e293b]/90 border border-[#334155] rounded-2xl p-10 shadow-[0_8px_30px_rgba(0,0,0,0.6)]"
       >
         <h1 class="text-4xl font-extrabold text-center mb-10 tracking-tight">
           Registrar Docente
         </h1>
 
-        <n-form
-          ref="formRef"
-          :model="form"
-          :rules="rules"
-          label-placement="top"
-        >
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-2">
-            <n-form-item label="Nombre" path="name">
-              <n-input
-                v-model:value="form.name"
-                placeholder="Ingrese nombre"
-                size="large"
-                class="w-full rounded-xl bg-[#0f172a]/70 border border-[#334155] px-4 py-2 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-all duration-300 placeholder:text-gray-400"
-              />
-            </n-form-item>
+        <n-config-provider :theme-overrides="theme">
+          <n-form
+            ref="formRef"
+            :model="form"
+            :rules="rules"
+            label-placement="top"
+            require-mark-placement="right-hanging"
+          >
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <n-form-item label="Nombre" path="name">
+                <n-input
+                  v-model:value="form.name"
+                  @update:value="form.name = onlyLetters($event)"
+                  size="large"
+                  placeholder="Ingrese nombre"
+                  clearable
+                />
+              </n-form-item>
 
-            <n-form-item label="Apellido Paterno" path="last_name">
-              <n-input
-                v-model:value="form.last_name"
-                placeholder="Ingrese apellido paterno"
-                size="large"
-                class="w-full rounded-xl bg-[#0f172a]/70 border border-[#334155] px-4 py-2 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-all duration-300 placeholder:text-gray-400"
-              />
-            </n-form-item>
+              <n-form-item label="Apellido Paterno" path="last_name">
+                <n-input
+                  v-model:value="form.last_name"
+                  @update:value="form.last_name = onlyLetters($event)"
+                  size="large"
+                  placeholder="Ingrese apellido paterno"
+                  clearable
+                />
+              </n-form-item>
 
-            <n-form-item label="Apellido Materno" path="second_last_name">
-              <n-input
-                v-model:value="form.second_last_name"
-                placeholder="Ingrese apellido materno"
-                size="large"
-                class="w-full rounded-xl bg-[#0f172a]/70 border border-[#334155] px-4 py-2 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-all duration-300 placeholder:text-gray-400"
-              />
-            </n-form-item>
+              <n-form-item label="Apellido Materno" path="second_last_name">
+                <n-input
+                  v-model:value="form.second_last_name"
+                  @update:value="form.second_last_name = onlyLetters($event)"
+                  size="large"
+                  placeholder="Ingrese apellido materno"
+                  clearable
+                />
+              </n-form-item>
 
-            <n-form-item label="Correo electrónico" path="email">
-              <n-input
-                v-model:value="form.email"
-                type="email"
-                placeholder="Ingrese correo electrónico"
-                size="large"
-                class="w-full rounded-xl bg-[#0f172a]/70 border border-[#334155] px-4 py-2 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-all duration-300 placeholder:text-gray-400"
-              />
-            </n-form-item>
+              <n-form-item label="Correo Electrónico" path="email">
+                <n-input
+                  v-model:value="form.email"
+                  size="large"
+                  placeholder="Ingrese correo electrónico"
+                  clearable
+                />
+              </n-form-item>
 
-            <n-form-item label="Carnet de Identidad" path="ci">
-              <n-input
-                v-model:value="form.ci"
-                placeholder="Ingrese carnet de identidad"
-                size="large"
-                class="w-full rounded-xl bg-[#0f172a]/70 border border-[#334155] px-4 py-2 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-all duration-300 placeholder:text-gray-400"
-              />
-            </n-form-item>
+              <n-form-item label="Carnet de Identidad" path="ci">
+                <n-input
+                  v-model:value="form.ci"
+                  @update:value="form.ci = onlyDigits($event, 12)"
+                  size="large"
+                  maxlength="12"
+                  placeholder="Solo números"
+                  clearable
+                />
+              </n-form-item>
 
-            <n-form-item label="Fecha de Nacimiento" path="dateofbirth">
-              <n-date-picker
-                v-model:value="form.dateofbirth"
-                type="date"
-                placeholder="Seleccione fecha"
-                size="large"
-                class="w-full rounded-xl bg-[#0f172a]/70 border border-[#334155] px-4 py-2 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-all duration-300 placeholder:text-gray-400"
-                :theme-overrides="naiveInputTheme"
-                :input-readonly="true"
-                clearable
-              />
-            </n-form-item>
+              <n-form-item
+                label="Lugar de Nacimiento"
+                path="placeofbirth_department"
+              >
+                <n-select
+                  v-model:value="form.placeofbirth_department"
+                  :options="departmentsOptions"
+                  size="large"
+                  placeholder="Seleccione departamento o Extranjero"
+                  @update:value="onChangeDepartment"
+                  clearable
+                />
+              </n-form-item>
 
-            <n-form-item label="Lugar de Nacimiento" path="placeofbirth">
-              <n-input
-                v-model:value="form.placeofbirth"
-                placeholder="Ciudad o departamento"
-                size="large"
-                class="w-full rounded-xl bg-[#0f172a]/70 border border-[#334155] px-4 py-2 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-all duration-300 placeholder:text-gray-400"
-              />
-            </n-form-item>
+              <n-form-item
+                v-if="form.placeofbirth_department === 'EXTRANJERO'"
+                label="País / Ciudad"
+                path="placeofbirth_other"
+              >
+                <n-input
+                  v-model:value="form.placeofbirth_other"
+                  size="large"
+                  placeholder="Ej: Perú, Lima"
+                  clearable
+                />
+              </n-form-item>
 
-            <n-form-item label="Teléfono" path="phone">
-              <n-input
-                v-model:value="form.phone"
-                placeholder="Ej: 71234567"
-                size="large"
-                class="w-full rounded-xl bg-[#0f172a]/70 border border-[#334155] px-4 py-2 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-all duration-300 placeholder:text-gray-400"
-              />
-            </n-form-item>
+              <n-form-item label="Teléfono" path="phone">
+                <n-input
+                  v-model:value="form.phone"
+                  @update:value="form.phone = onlyDigits($event, 8)"
+                  size="large"
+                  maxlength="8"
+                  placeholder="Ej: 71234567"
+                  clearable
+                />
+              </n-form-item>
 
-            <n-form-item label="Género" path="gender">
-              <n-select
-                v-model:value="form.gender"
-                :options="genderOptions"
-                placeholder="Seleccione género"
-                size="large"
-                class="w-full rounded-xl bg-[#0f172a]/70 border border-[#334155] px-4 py-2 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-all duration-300 text-gray-100"
-                :theme-overrides="naiveInputTheme"
-                clearable
-              />
-            </n-form-item>
+              <n-form-item label="Género" path="gender">
+                <n-select
+                  v-model:value="form.gender"
+                  :options="genderOptions"
+                  size="large"
+                  placeholder="Seleccione género"
+                  clearable
+                />
+              </n-form-item>
 
-            <n-form-item label="Especialidad" path="specialty">
-              <n-input
-                v-model:value="form.specialty"
-                placeholder="Ej: Matemáticas, Diseño gráfico..."
-                size="large"
-                class="w-full rounded-xl bg-[#0f172a]/70 border border-[#334155] px-4 py-2 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-all duration-300 placeholder:text-gray-400"
-              />
-            </n-form-item>
-          </div>
+              <n-form-item label="Especialidad" path="specialty">
+                <n-select
+                  v-model:value="form.specialty"
+                  :options="specialtyOptions"
+                  filterable
+                  clearable
+                  size="large"
+                  placeholder="Seleccione especialidad"
+                />
+              </n-form-item>
 
-          <div class="mt-10 flex justify-center gap-4">
-            <n-button
-              type="default"
-              class="bg-[#1e293b] border border-[#334155] text-gray-300 font-bold px-10 py-3 rounded-xl hover:bg-[#334155] hover:text-white hover:scale-105 active:scale-95 transition-all duration-300"
-              @click="$router.push('/teachers')"
+              <n-form-item label="Fecha de Nacimiento" path="dateofbirth">
+                <n-date-picker
+                  v-model:value="form.dateofbirth"
+                  type="date"
+                  size="large"
+                  :is-date-disabled="(ts) => ts > Date.now()"
+                  placeholder="Seleccione fecha"
+                />
+              </n-form-item>
+            </div>
+
+            <div class="mt-8 flex justify-center gap-3">
+              <n-button
+                secondary
+                strong
+                size="large"
+                @click="$router.push('/teachers')"
+                >Volver</n-button
+              >
+              <n-button
+                type="primary"
+                strong
+                size="large"
+                @click="modalShow = true"
+                >Registrar</n-button
+              >
+            </div>
+          </n-form>
+
+          <n-modal
+            :show="modalShow"
+            :auto-focus="false"
+            @mask-click="modalShow = false"
+          >
+            <div
+              class="w-[520px] max-w-[92vw] bg-[#111827] text-white rounded-2xl border border-[#334155] p-6 shadow-2xl"
             >
-              Volver
-            </n-button>
-
-            <n-button
-              type="primary"
-              class="bg-gradient-to-r from-[#1e3a8a] to-[#2563eb] text-white font-extrabold px-10 py-3 rounded-xl shadow-[0_0_25px_rgba(37,99,235,0.6)] hover:shadow-[0_0_40px_rgba(37,99,235,0.9)] hover:scale-105 active:scale-95 transition-all duration-300"
-              @click="modalShow = true"
-            >
-              Registrar
-            </n-button>
-          </div>
-        </n-form>
+              <h3 class="text-xl font-semibold mb-3">Confirmar registro</h3>
+              <p class="text-gray-300">
+                Se enviará un correo al docente con sus credenciales (CI y PIN).
+                ¿Desea continuar?
+              </p>
+              <div class="mt-6 flex justify-end gap-3">
+                <n-button secondary size="large" @click="modalShow = false"
+                  >Cancelar</n-button
+                >
+                <n-button
+                  type="primary"
+                  size="large"
+                  :loading="submitting"
+                  @click="handleConfirm"
+                  >Registrar</n-button
+                >
+              </div>
+            </div>
+          </n-modal>
+        </n-config-provider>
       </div>
-
-      <n-modal
-        :show="modalShow"
-        :auto-focus="false"
-        @mask-click="modalShow = false"
-      >
-        <div
-          class="w-[520px] max-w-[92vw] bg-[#111827] text-white rounded-2xl border border-[#334155] p-6 shadow-2xl"
-        >
-          <h3 class="text-xl font-semibold mb-3">Confirmar registro</h3>
-          <p class="text-gray-300">
-            Se enviará un correo electrónico al docente con sus credenciales de
-            acceso (Carnet de Identidad y PIN). ¿Desea continuar?
-          </p>
-          <div class="mt-6 flex justify-end gap-3">
-            <n-button quaternary @click="modalShow = false">Cancelar</n-button>
-            <n-button type="primary" @click="handleConfirm">Registrar</n-button>
-          </div>
-        </div>
-      </n-modal>
     </div>
   </app-layout>
 </template>
@@ -166,6 +197,8 @@ import {
   NSelect,
   NDatePicker,
   NModal,
+  NConfigProvider,
+  useMessage,
 } from "naive-ui";
 import AppLayout from "@/layouts/AppLayout.vue";
 import TeacherService from "@/services/teacherService";
@@ -181,10 +214,12 @@ export default {
     NSelect,
     NDatePicker,
     NModal,
+    NConfigProvider,
   },
   data() {
     return {
       formRef: null,
+      message: null,
       modalShow: false,
       submitting: false,
       form: {
@@ -194,73 +229,222 @@ export default {
         email: "",
         ci: "",
         dateofbirth: null,
-        placeofbirth: "",
+        placeofbirth_department: null,
+        placeofbirth_other: "",
         phone: "",
         gender: null,
-        specialty: "",
+        specialty: null,
       },
       genderOptions: [
         { label: "MASCULINO", value: "MASCULINO" },
         { label: "FEMENINO", value: "FEMENINO" },
         { label: "OTRO", value: "OTRO" },
       ],
+      departmentsOptions: [
+        { label: "La Paz", value: "LA PAZ" },
+        { label: "Santa Cruz", value: "SANTA CRUZ" },
+        { label: "Cochabamba", value: "COCHABAMBA" },
+        { label: "Oruro", value: "ORURO" },
+        { label: "Potosí", value: "POTOSÍ" },
+        { label: "Tarija", value: "TARIJA" },
+        { label: "Chuquisaca", value: "CHUQUISACA" },
+        { label: "Beni", value: "BENI" },
+        { label: "Pando", value: "PANDO" },
+        { label: "Extranjero", value: "EXTRANJERO" },
+      ],
+      specialtyOptions: [
+        { label: "Matemáticas", value: "MATEMATICAS" },
+        { label: "Lengua y Literatura", value: "LENGUA" },
+        { label: "Física", value: "FISICA" },
+        { label: "Química", value: "QUIMICA" },
+        { label: "Biología", value: "BIOLOGIA" },
+        { label: "Ciencias Sociales", value: "SOCIALES" },
+        { label: "Historia", value: "HISTORIA" },
+        { label: "Geografía", value: "GEOGRAFIA" },
+        { label: "Informática", value: "INFORMATICA" },
+        { label: "Programación", value: "PROGRAMACION" },
+        { label: "Inglés", value: "INGLES" },
+        { label: "Educación Física", value: "ED_FISICA" },
+        { label: "Música", value: "MUSICA" },
+        { label: "Artes Plásticas", value: "ARTES" },
+        { label: "Filosofía", value: "FILOSOFIA" },
+        { label: "Economía", value: "ECONOMIA" },
+        { label: "Contabilidad", value: "CONTABILIDAD" },
+      ],
+      theme: {
+        common: { primaryColor: "#2563eb" },
+        Input: {
+          color: "rgba(15,23,42,0.7)",
+          textColor: "#e5e7eb",
+          placeholderColor: "#94a3b8",
+          borderColor: "#334155",
+          borderColorHover: "#3b82f6",
+          borderRadius: "12px",
+          heightLarge: "44px",
+        },
+        Select: {
+          peers: {
+            InternalSelection: {
+              color: "rgba(15,23,42,0.7)",
+              textColor: "#e5e7eb",
+              placeholderColor: "#94a3b8",
+              borderColor: "#334155",
+              borderColorHover: "#3b82f6",
+              borderRadius: "12px",
+              heightLarge: "44px",
+            },
+          },
+        },
+        DatePicker: {
+          peers: {
+            Input: {
+              color: "rgba(15,23,42,0.7)",
+              textColor: "#e5e7eb",
+              placeholderColor: "#94a3b8",
+              borderColor: "#334155",
+              borderColorHover: "#3b82f6",
+              borderRadius: "12px",
+              heightLarge: "44px",
+            },
+          },
+        },
+        Button: { textColor: "#ffffff" },
+      },
       rules: {
-        name: { required: true, message: "Nombre requerido", trigger: "blur" },
-        last_name: {
-          required: true,
-          message: "Apellido paterno requerido",
-          trigger: "blur",
-        },
-        second_last_name: {
-          required: true,
-          message: "Apellido materno requerido",
-          trigger: "blur",
-        },
+        name: [
+          { required: true, message: "Nombre requerido", trigger: "blur" },
+          {
+            pattern: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s'-]+$/,
+            message: "Solo letras",
+            trigger: ["blur", "input"],
+          },
+        ],
+        last_name: [
+          {
+            required: true,
+            message: "Apellido paterno requerido",
+            trigger: "blur",
+          },
+          {
+            pattern: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s'-]+$/,
+            message: "Solo letras",
+            trigger: ["blur", "input"],
+          },
+        ],
+        second_last_name: [
+          {
+            required: true,
+            message: "Apellido materno requerido",
+            trigger: "blur",
+          },
+          {
+            pattern: /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s'-]+$/,
+            message: "Solo letras",
+            trigger: ["blur", "input"],
+          },
+        ],
         email: [
           { required: true, message: "Correo requerido", trigger: "blur" },
           { type: "email", message: "Correo no válido", trigger: "blur" },
         ],
-        ci: {
-          required: true,
-          message: "Carnet de Identidad requerido",
-          trigger: "blur",
-        },
-        phone: {
-          required: true,
-          message: "Teléfono requerido",
-          trigger: "blur",
-        },
-        gender: {
-          required: true,
-          message: "Seleccione género",
-          trigger: "change",
-        },
+        ci: [
+          {
+            required: true,
+            message: "Carnet de Identidad requerido",
+            trigger: "blur",
+          },
+          {
+            pattern: /^\d{5,12}$/,
+            message: "Solo números (5–12)",
+            trigger: ["blur", "input"],
+          },
+        ],
+        phone: [
+          { required: true, message: "Teléfono requerido", trigger: "blur" },
+          {
+            pattern: /^[67]\d{7}$/,
+            message: "8 dígitos, inicia 6/7",
+            trigger: ["blur", "input"],
+          },
+        ],
+        gender: [
+          { required: true, message: "Seleccione género", trigger: "change" },
+        ],
+        specialty: [
+          {
+            required: true,
+            message: "Seleccione especialidad",
+            trigger: "change",
+          },
+        ],
+        dateofbirth: [
+          {
+            required: true,
+            message: "Seleccione fecha válida",
+            trigger: "change",
+          },
+        ],
+        placeofbirth_department: [
+          {
+            required: true,
+            message: "Seleccione lugar de nacimiento",
+            trigger: "change",
+          },
+        ],
+        placeofbirth_other: [
+          {
+            validator: (r, v) =>
+              this.form.placeofbirth_department === "EXTRANJERO"
+                ? !!(v && v.trim())
+                : true,
+            message: "Ingrese país/ciudad",
+            trigger: ["blur", "input", "change"],
+          },
+        ],
       },
     };
   },
   methods: {
+    onlyLetters(v) {
+      return (v || "").replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s'-]/g, "");
+    },
+    onlyDigits(v, max) {
+      const s = (v || "").replace(/\D/g, "");
+      return max ? s.slice(0, max) : s;
+    },
+    onChangeDepartment(v) {
+      this.form.placeofbirth_department = v;
+      if (v !== "EXTRANJERO") this.form.placeofbirth_other = "";
+      this.$nextTick(() => this.formRef?.validate(["placeofbirth_other"]));
+    },
     async handleConfirm() {
       if (this.submitting) return;
       await this.formRef?.validate();
       this.submitting = true;
       try {
-        const payload = {
-          ...this.form,
-          dateofbirth: this.form.dateofbirth
-            ? new Date(this.form.dateofbirth).toISOString()
-            : null,
-        };
+        const payload = { ...this.form };
+        payload.dateofbirth = payload.dateofbirth
+          ? new Date(payload.dateofbirth).toISOString()
+          : null;
+        payload.placeofbirth =
+          payload.placeofbirth_department === "EXTRANJERO"
+            ? payload.placeofbirth_other
+            : payload.placeofbirth_department;
+        delete payload.placeofbirth_department;
+        delete payload.placeofbirth_other;
         await TeacherService.create(payload);
+        this.message?.success("Docente registrado exitosamente.");
         this.modalShow = false;
         this.$router.push("/teachers");
-      } catch (e) {
-        console.error(e);
+      } catch {
+        this.message?.error("Error al registrar docente.");
       } finally {
         this.submitting = false;
       }
     },
   },
+  created() {
+    this.message = useMessage();
+  },
 };
 </script>
-
-<style></style>

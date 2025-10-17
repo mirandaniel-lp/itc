@@ -6,6 +6,7 @@
           class="flex flex-col md:flex-row md:items-center md:justify-between gap-4"
         >
           <h1 class="text-4xl font-extrabold">Lista de Cursos</h1>
+
           <div class="flex items-center gap-3 w-full md:w-auto">
             <div class="relative w-full md:w-80">
               <input
@@ -21,9 +22,11 @@
                 size="20"
               />
             </div>
+
             <n-button
               type="primary"
-              class="font-extrabold"
+              size="large"
+              class="rounded-lg font-extrabold"
               @click="$router.push('/courses/create')"
             >
               + Nuevo
@@ -47,14 +50,14 @@
 
           <div
             v-else
-            class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+            class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
           >
             <div
               v-for="c in paginatedData"
               :key="c.id"
-              class="group rounded-2xl border border-[#334155] bg-[#0f172a]/80 hover:bg-[#0f172a] transition-all duration-300 shadow-[0_4px_18px_rgba(0,0,0,0.35)] overflow-hidden"
+              class="group rounded-2xl border border-[#334155] bg-[#0f172a]/80 hover:bg-[#0f172a] transition-all duration-300 shadow-[0_4px_18px_rgba(0,0,0,0.35)] overflow-hidden flex flex-col h-64"
             >
-              <div class="p-5 space-y-4">
+              <div class="p-5 flex flex-col h-full">
                 <div class="flex items-start justify-between">
                   <div>
                     <h2 class="text-xl font-extrabold leading-6">
@@ -70,14 +73,16 @@
                   </span>
                 </div>
 
-                <div class="grid grid-cols-2 gap-3 text-sm">
+                <div class="grid grid-cols-2 gap-3 text-sm mt-4">
                   <div class="flex items-center gap-2 text-gray-300">
                     <n-icon :component="PersonOutline" size="18" />
-                    <span class="truncate">{{
-                      c.teacher
-                        ? `${c.teacher.name} ${c.teacher.last_name}`
-                        : "Sin docente"
-                    }}</span>
+                    <span class="truncate">
+                      {{
+                        c.teacher
+                          ? `${c.teacher.name} ${c.teacher.last_name}`
+                          : "Sin docente"
+                      }}
+                    </span>
                   </div>
                   <div
                     class="flex items-center gap-2 text-gray-300 justify-end"
@@ -85,29 +90,33 @@
                     <n-icon :component="LayersOutline" size="18" />
                     <span>Paralelo {{ c.parallel }}</span>
                   </div>
+
                   <div class="flex items-center gap-2 text-gray-300">
                     <n-icon :component="CalendarOutline" size="18" />
-                    <span>
-                      {{ c.start_date ? formatDate(c.start_date) : "-" }}
-                    </span>
+                    <span
+                      >Inicio:
+                      {{ c.start_date ? formatDate(c.start_date) : "-" }}</span
+                    >
                   </div>
                   <div
                     class="flex items-center gap-2 text-gray-300 justify-end"
                   >
                     <n-icon :component="CalendarOutline" size="18" />
-                    <span>
-                      {{ c.end_date ? formatDate(c.end_date) : "-" }}
-                    </span>
+                    <span
+                      >Fin:
+                      {{ c.end_date ? formatDate(c.end_date) : "-" }}</span
+                    >
                   </div>
+
                   <div class="col-span-2 flex items-center gap-2 text-gray-200">
                     <n-icon :component="CashOutline" size="18" />
-                    <span class="text-lg font-extrabold">
-                      {{ formatMoney(c.cost) }} Bs.
-                    </span>
+                    <span class="text-lg font-extrabold"
+                      >{{ formatMoney(c.cost) }} Bs.</span
+                    >
                   </div>
                 </div>
 
-                <div class="flex items-center justify-between pt-1">
+                <div class="mt-auto flex justify-end gap-2">
                   <button
                     class="px-3 py-1.5 rounded-lg text-sm font-bold bg-gradient-to-r from-[#1e3a8a] to-[#2563eb] text-white hover:shadow-[0_0_15px_rgba(37,99,235,0.5)] transition-all"
                     @click="$router.push(`/courses/${c.id}/edit`)"
@@ -170,13 +179,7 @@ import CourseService from "@/services/courseService";
 
 export default {
   name: "ListCoursesView",
-  components: {
-    AppLayout,
-    NButton,
-    NIcon,
-    NPagination,
-    NPopconfirm,
-  },
+  components: { AppLayout, NButton, NIcon, NPagination, NPopconfirm },
   data() {
     return {
       SearchOutline,
@@ -252,5 +255,3 @@ export default {
   },
 };
 </script>
-
-<style></style>

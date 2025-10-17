@@ -2,136 +2,116 @@
   <app-layout>
     <div class="min-h-screen bg-[#0f172a] p-10 text-white flex justify-center">
       <div
-        class="w-full max-w-5xl bg-[#1e293b]/90 border border-[#334155] shadow-[0_8px_30px_rgba(0,0,0,0.6)] rounded-2xl p-10 backdrop-blur-sm"
+        class="w-full max-w-5xl bg-[#1e293b]/90 border border-[#334155] rounded-2xl p-10 shadow-[0_8px_30px_rgba(0,0,0,0.6)]"
       >
         <h1 class="text-4xl font-extrabold text-center mb-10 tracking-tight">
           Registrar Curso
         </h1>
 
-        <n-form
-          ref="formRef"
-          :model="form"
-          :rules="rules"
-          label-placement="top"
-        >
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-2">
-            <n-form-item label="Nombre del Curso" path="name">
+        <n-config-provider :theme-overrides="theme">
+          <n-form
+            ref="formRef"
+            :model="form"
+            :rules="rules"
+            label-placement="top"
+            require-mark-placement="right-hanging"
+          >
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <n-form-item label="Nombre del Curso" path="name">
+                <n-input
+                  v-model:value="form.name"
+                  size="large"
+                  placeholder="Ej: Administración I"
+                  clearable
+                />
+              </n-form-item>
+
+              <n-form-item label="Paralelo" path="parallel">
+                <n-select
+                  v-model:value="form.parallel"
+                  :options="parallelOptions"
+                  size="large"
+                  placeholder="Seleccione paralelo"
+                  clearable
+                />
+              </n-form-item>
+
+              <n-form-item label="Docente Asignado" path="teacherId">
+                <n-select
+                  v-model:value="form.teacherId"
+                  :options="teacherOptions"
+                  filterable
+                  clearable
+                  size="large"
+                  placeholder="Seleccione docente"
+                />
+              </n-form-item>
+
+              <n-form-item label="Modalidad" path="modalityId">
+                <n-select
+                  v-model:value="form.modalityId"
+                  :options="modalityOptions"
+                  filterable
+                  clearable
+                  size="large"
+                  placeholder="Seleccione modalidad"
+                />
+              </n-form-item>
+
+              <n-form-item label="Periodo (3–12 meses)" path="range" :span="2">
+                <n-date-picker
+                  v-model:value="form.range"
+                  type="daterange"
+                  size="large"
+                  start-placeholder="Fecha de inicio"
+                  end-placeholder="Fecha de finalización"
+                  :is-date-disabled="disableRangeDate"
+                  clearable
+                />
+              </n-form-item>
+
+              <n-form-item label="Costo (Bs.)" path="cost">
+                <n-input-number
+                  v-model:value="form.cost"
+                  :min="100"
+                  :precision="1"
+                  :step="1"
+                  size="large"
+                  placeholder="Ej: 300.0"
+                />
+              </n-form-item>
+            </div>
+
+            <n-form-item label="Descripción">
               <n-input
-                v-model:value="form.name"
-                placeholder="Ej: Administración I"
+                v-model:value="form.description"
+                type="textarea"
+                autosize
                 size="large"
-                class="w-full rounded-xl bg-[#0f172a]/70 border border-[#334155] px-4 py-2 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-all duration-300 placeholder:text-gray-400"
+                placeholder="Descripción opcional"
               />
             </n-form-item>
 
-            <!-- Paralelo como SELECT -->
-            <n-form-item label="Paralelo" path="parallel">
-              <n-select
-                v-model:value="form.parallel"
-                :options="parallelOptions"
-                placeholder="Seleccione paralelo"
+            <div class="mt-8 flex justify-center gap-3">
+              <n-button
+                secondary
+                strong
                 size="large"
-                clearable
-                class="w-full rounded-xl bg-[#0f172a]/70 border border-[#334155] px-2 py-1 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-all duration-300 text-gray-100"
-              />
-            </n-form-item>
-
-            <n-form-item label="Costo (Bs.)" path="cost">
-              <n-input-number
-                v-model:value="form.cost"
-                placeholder="Ej: 300"
-                :min="100"
-                :precision="1"
-                :step="1"
-                size="large"
-                class="w-full rounded-xl bg-[#0f172a]/70 border border-[#334155] px-2 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-all duration-300"
-              />
-            </n-form-item>
-
-            <n-form-item label="Modalidad" path="modalityId">
-              <n-select
-                v-model:value="form.modalityId"
-                :options="modalityOptions"
-                placeholder="Seleccione modalidad"
-                filterable
-                clearable
-                size="large"
-                class="w-full rounded-xl bg-[#0f172a]/70 border border-[#334155] px-2 py-1 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-all duration-300 text-gray-100"
-              />
-            </n-form-item>
-
-            <n-form-item label="Docente Asignado" path="teacherId">
-              <n-select
-                v-model:value="form.teacherId"
-                :options="teacherOptions"
-                placeholder="Seleccione docente"
-                filterable
-                clearable
-                size="large"
-                class="w-full rounded-xl bg-[#0f172a]/70 border border-[#334155] px-2 py-1 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-all duration-300 text-gray-100"
-              />
-            </n-form-item>
-
-            <n-form-item label="Fecha de Inicio" path="start_date">
-              <n-date-picker
-                v-model:value="form.start_date"
-                type="date"
-                placeholder="Seleccione fecha"
-                :input-readonly="true"
-                clearable
-                size="large"
-                class="w-full rounded-xl bg-[#0f172a]/70 border border-[#334155] px-4 py-2 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-all duration-300 placeholder:text-gray-400"
-              />
-            </n-form-item>
-
-            <n-form-item label="Fecha de Finalización" path="end_date">
-              <n-date-picker
-                v-model:value="form.end_date"
-                type="date"
-                placeholder="Opcional"
-                :input-readonly="true"
-                clearable
-                size="large"
-                class="w-full rounded-xl bg-[#0f172a]/70 border border-[#334155] px-4 py-2 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-all duration-300 placeholder:text-gray-400"
-              />
-            </n-form-item>
-          </div>
-
-          <n-form-item label="Descripción">
-            <n-input
-              v-model:value="form.description"
-              type="textarea"
-              placeholder="Descripción opcional"
-              autosize
-              size="large"
-              class="w-full rounded-xl bg-[#0f172a]/70 border border-[#334155] px-4 py-2 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-all duration-300 placeholder:text-gray-400"
-            />
-          </n-form-item>
-
-          <div class="mt-10 flex justify-center gap-4">
-            <n-button
-              type="default"
-              class="bg-[#1e293b] border border-[#334155] text-gray-300 font-bold px-10 py-3 rounded-xl hover:bg-[#334155] hover:text-white hover:scale-105 active:scale-95 transition-all duration-300"
-              @click="$router.push('/courses')"
-            >
-              Volver
-            </n-button>
-
-            <n-button
-              type="primary"
-              class="bg-gradient-to-r from-[#1e3a8a] to-[#2563eb] text-white font-extrabold px-10 py-3 rounded-xl shadow-[0_0_25px_rgba(37,99,235,0.6)] hover:shadow-[0_0_40px_rgba(37,99,235,0.9)] hover:scale-105 active:scale-95 transition-all duration-300"
-              @click="submit"
-            >
-              Guardar Curso
-            </n-button>
-          </div>
-        </n-form>
+                @click="$router.push('/courses')"
+                >Volver</n-button
+              >
+              <n-button type="primary" strong size="large" @click="submit"
+                >Guardar</n-button
+              >
+            </div>
+          </n-form>
+        </n-config-provider>
       </div>
     </div>
   </app-layout>
 </template>
 
-<script>
+<script setup>
 import {
   NForm,
   NFormItem,
@@ -140,116 +120,193 @@ import {
   NInputNumber,
   NDatePicker,
   NSelect,
+  NConfigProvider,
   useMessage,
 } from "naive-ui";
+import { ref, reactive, onMounted } from "vue";
 import AppLayout from "@/layouts/AppLayout.vue";
 import CourseService from "@/services/courseService";
 import TeacherService from "@/services/teacherService";
 import axios from "axios";
 
-export default {
-  name: "CreateCourseView",
-  components: {
-    AppLayout,
-    NForm,
-    NFormItem,
-    NInput,
-    NButton,
-    NInputNumber,
-    NDatePicker,
-    NSelect,
-  },
-  data() {
-    return {
-      formRef: null,
-      message: null,
-      form: {
-        name: "",
-        parallel: null,
-        description: "",
-        cost: 0,
-        start_date: null,
-        end_date: null,
-        teacherId: null,
-        modalityId: null,
-      },
-      parallelOptions: [
-        { label: "A", value: "A" },
-        { label: "B", value: "B" },
-        { label: "C", value: "C" },
-      ],
-      teacherOptions: [],
-      modalityOptions: [],
-      rules: {
-        name: { required: true, message: "Nombre requerido", trigger: "blur" },
-        parallel: {
-          required: true,
-          message: "Paralelo requerido",
-          trigger: "change",
-        },
-        teacherId: {
-          required: true,
-          message: "Seleccione un docente",
-          trigger: "change",
-        },
-        modalityId: {
-          required: true,
-          message: "Seleccione una modalidad",
-          trigger: "change",
-        },
-      },
-    };
-  },
-  methods: {
-    async loadSelects() {
-      try {
-        const teachers = await TeacherService.getAll();
-        this.teacherOptions = (teachers || []).map((t) => ({
-          label: `${t.name} ${t.last_name ?? ""} ${
-            t.second_last_name ?? ""
-          }`.trim(),
-          value: t.id,
-        }));
+const message = useMessage();
+const formRef = ref(null);
 
-        const res = await axios.get("http://localhost:3000/api/modalities", {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-          withCredentials: true,
-        });
-        this.modalityOptions = (res.data.modalities || []).map((m) => ({
-          label: m.name,
-          value: m.id,
-        }));
-      } catch {
-        this.message?.error?.("Error al cargar docentes o modalidades.");
-      }
-    },
-    async submit() {
-      try {
-        await this.formRef?.validate();
-        const payload = {
-          ...this.form,
-          cost:
-            this.form.cost == null ? "0.0" : Number(this.form.cost).toFixed(1),
-          start_date: this.form.start_date
-            ? new Date(this.form.start_date).toISOString()
-            : null,
-          end_date: this.form.end_date
-            ? new Date(this.form.end_date).toISOString()
-            : null,
-        };
-        await CourseService.create(payload);
-        this.message.success("Curso creado exitosamente.");
-        this.$router.push("/courses");
-      } catch {
-        this.message.error("Error al registrar curso.");
-      }
+const form = reactive({
+  name: "",
+  parallel: null,
+  description: "",
+  cost: 100,
+  range: null,
+  teacherId: null,
+  modalityId: null,
+});
+
+const parallelOptions = [
+  { label: "A", value: "A" },
+  { label: "B", value: "B" },
+  { label: "C", value: "C" },
+];
+
+const teacherOptions = ref([]);
+const modalityOptions = ref([]);
+
+const theme = {
+  common: { primaryColor: "#2563eb" },
+  Input: {
+    color: "rgba(15,23,42,0.7)",
+    textColor: "#e5e7eb",
+    placeholderColor: "#94a3b8",
+    borderColor: "#334155",
+    borderColorHover: "#3b82f6",
+    borderRadius: "12px",
+    heightLarge: "44px",
+  },
+  InputNumber: {
+    peers: {
+      Input: {
+        color: "rgba(15,23,42,0.7)",
+        textColor: "#e5e7eb",
+        placeholderColor: "#94a3b8",
+        borderColor: "#334155",
+        borderColorHover: "#3b82f6",
+        borderRadius: "12px",
+        heightLarge: "44px",
+      },
     },
   },
-  created() {
-    this.message = useMessage();
-    this.loadSelects();
+  Select: {
+    peers: {
+      InternalSelection: {
+        color: "rgba(15,23,42,0.7)",
+        textColor: "#e5e7eb",
+        placeholderColor: "#94a3b8",
+        borderColor: "#334155",
+        borderColorHover: "#3b82f6",
+        borderRadius: "12px",
+        heightLarge: "44px",
+      },
+    },
   },
+  DatePicker: {
+    peers: {
+      Input: {
+        color: "rgba(15,23,42,0.7)",
+        textColor: "#e5e7eb",
+        placeholderColor: "#94a3b8",
+        borderColor: "#334155",
+        borderColorHover: "#3b82f6",
+        borderRadius: "12px",
+        heightLarge: "44px",
+      },
+    },
+  },
+  Button: { textColor: "#ffffff" },
 };
-</script>
 
-<style></style>
+const addMonths = (ts, months) => {
+  const d = new Date(ts);
+  d.setMonth(d.getMonth() + months);
+  return +d;
+};
+
+const disableRangeDate = (ts) => {
+  const v = form.range || [];
+  const [s, e] = v;
+  if (s && !e) {
+    const minEnd = addMonths(s, 3);
+    const maxEnd = addMonths(s, 12);
+    return ts < minEnd || ts > maxEnd;
+  }
+  if (!s && e) {
+    const minStart = addMonths(e, -12);
+    const maxStart = addMonths(e, -3);
+    return ts < minStart || ts > maxStart;
+  }
+  return false;
+};
+
+const rules = {
+  name: [{ required: true, message: "Nombre requerido", trigger: "blur" }],
+  parallel: [
+    { required: true, message: "Paralelo requerido", trigger: "change" },
+  ],
+  teacherId: [
+    { required: true, message: "Seleccione un docente", trigger: "change" },
+  ],
+  modalityId: [
+    { required: true, message: "Seleccione una modalidad", trigger: "change" },
+  ],
+  range: [
+    {
+      trigger: ["change", "blur"],
+      validator: (_, v) => {
+        if (
+          !Array.isArray(v) ||
+          v.length !== 2 ||
+          v[0] == null ||
+          v[1] == null
+        ) {
+          return new Error("Seleccione inicio y fin");
+        }
+        const [s, e] = v;
+        if (e < s)
+          return new Error("La fecha final no puede ser menor al inicio");
+        const min = addMonths(s, 3);
+        const max = addMonths(s, 12);
+        return e >= min && e <= max
+          ? true
+          : new Error(
+              "La duración debe ser entre 3 y 12 meses desde el inicio"
+            );
+      },
+    },
+  ],
+};
+
+const loadSelects = async () => {
+  try {
+    const teachers = await TeacherService.getAll();
+    teacherOptions.value = (teachers || []).map((t) => ({
+      label: `${t.name} ${t.last_name ?? ""} ${
+        t.second_last_name ?? ""
+      }`.trim(),
+      value: t.id,
+    }));
+    const res = await axios.get("http://localhost:3000/api/modalities", {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      withCredentials: true,
+    });
+    modalityOptions.value = (res.data.modalities || []).map((m) => ({
+      label: m.name,
+      value: m.id,
+    }));
+  } catch {
+    message?.error("Error al cargar docentes o modalidades.");
+  }
+};
+
+const submit = async () => {
+  try {
+    await formRef.value?.validate();
+    const [startTs, endTs] = form.range || [];
+    const payload = {
+      name: form.name,
+      parallel: form.parallel,
+      description: form.description,
+      cost: form.cost == null ? "0.0" : Number(form.cost).toFixed(1),
+      start_date: startTs ? new Date(startTs).toISOString() : null,
+      end_date: endTs ? new Date(endTs).toISOString() : null,
+      teacherId: form.teacherId,
+      modalityId: form.modalityId,
+    };
+    await CourseService.create(payload);
+    message.success("Curso creado exitosamente.");
+    window.location.assign("/courses");
+  } catch {
+    message.error("Error al registrar curso.");
+  }
+};
+
+onMounted(loadSelects);
+</script>

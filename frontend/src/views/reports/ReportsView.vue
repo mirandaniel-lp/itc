@@ -1,7 +1,7 @@
 <template>
   <app-layout>
     <div class="min-h-screen p-4 space-y-6">
-      <h1 class="text-3xl font-bold text-center">Reportes Académicos</h1>
+      <h1 class="text-3xl md:text-4xl font-extrabold">Reportes</h1>
 
       <div class="flex flex-wrap gap-3 items-center">
         <n-select
@@ -51,19 +51,49 @@
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <n-card title="Inscripciones en el tiempo">
+        <n-card
+          class="rounded-2xl shadow-lg hover:shadow-2xl transition-all border-0 bg-gradient-to-br from-slate-900 to-slate-800 text-white"
+          size="large"
+        >
+          <template #header>
+            <span class="font-extrabold text-2xl"
+              >Inscripciones en el tiempo</span
+            >
+          </template>
           <v-chart :option="chartEnrollmentsOption" autoresize class="h-72" />
         </n-card>
 
-        <n-card title="Inscripciones por modalidad">
+        <n-card
+          class="rounded-2xl shadow-lg hover:shadow-2xl transition-all border-0 bg-gradient-to-br from-slate-900 to-slate-800 text-white"
+          size="large"
+        >
+          <template #header>
+            <span class="font-extrabold text-2xl"
+              >Inscripciones por modalidad</span
+            >
+          </template>
           <v-chart :option="chartModalityOption" autoresize class="h-72" />
         </n-card>
 
-        <n-card title="Top cursos por inscripciones">
+        <n-card
+          class="rounded-2xl shadow-lg hover:shadow-2xl transition-all border-0 bg-gradient-to-br from-slate-900 to-slate-800 text-white"
+          size="large"
+        >
+          <template #header>
+            <span class="font-extrabold text-2xl"
+              >Top cursos por inscripciones</span
+            >
+          </template>
           <v-chart :option="chartTopCoursesOption" autoresize class="h-80" />
         </n-card>
 
-        <n-card title="Distribución académica">
+        <n-card
+          class="rounded-2xl shadow-lg hover:shadow-2xl transition-all border-0 bg-gradient-to-br from-slate-900 to-slate-800 text-white"
+          size="large"
+        >
+          <template #header>
+            <span class="font-extrabold text-2xl">Distribución académica</span>
+          </template>
           <v-chart :option="chartGradesOption" autoresize class="h-80" />
         </n-card>
       </div>
@@ -71,7 +101,7 @@
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <n-card
           title="Reporte de Matrículas"
-          class="hover:shadow-xl transition-shadow"
+          class="hover:shadow-xl transition-shadow rounded-xl"
         >
           <p class="mb-4">
             Descarga un listado de estudiantes matriculados por curso.
@@ -83,9 +113,10 @@
             >Exportar PDF</n-button
           >
         </n-card>
+
         <n-card
           title="Reporte de Calificaciones"
-          class="hover:shadow-xl transition-shadow"
+          class="hover:shadow-xl transition-shadow rounded-xl"
         >
           <p class="mb-4">
             Obtén calificaciones por curso, actividad y estudiante.
@@ -97,9 +128,10 @@
             >Exportar PDF</n-button
           >
         </n-card>
+
         <n-card
           title="Reporte de Docentes"
-          class="hover:shadow-xl transition-shadow"
+          class="hover:shadow-xl transition-shadow rounded-xl"
         >
           <p class="mb-4">Listado de docentes y sus cursos asignados.</p>
           <n-button @click="downloadTeachers('csv')" class="mr-2"
@@ -109,9 +141,10 @@
             >Exportar PDF</n-button
           >
         </n-card>
+
         <n-card
           title="Reporte de Actividades"
-          class="hover:shadow-xl transition-shadow"
+          class="hover:shadow-xl transition-shadow rounded-xl"
         >
           <p class="mb-4">Actividades por curso y docente.</p>
           <n-button @click="downloadActivities('csv')" class="mr-2"
@@ -161,6 +194,7 @@ use([
   LegendComponent,
   TitleComponent,
 ]);
+
 import enrollmentService from "@/services/enrollmentService";
 import gradeService from "@/services/gradeService";
 import teacherService from "@/services/teacherService";
@@ -169,37 +203,33 @@ import courseService from "@/services/courseService";
 import modalityService from "@/services/modalityService";
 import reportService from "@/services/reportService";
 
-function getModernTableLayout() {
+const CHART_COLORS = {
+  text: "#e5e7eb",
+  subtext: "#9ca3af",
+  gridLine: "#374151",
+  axis: "#9ca3af",
+  tooltipBg: "#111827",
+  tooltipBorder: "#374151",
+  palette: ["#60a5fa", "#f59e0b", "#34d399", "#f472b6", "#c084fc", "#f97316"],
+};
+
+function darkBase(option = {}) {
   return {
-    fillColor: function (rowIndex) {
-      return rowIndex === 0 ? "#1976d2" : rowIndex % 2 === 0 ? "#e3f2fd" : null;
+    textStyle: { color: CHART_COLORS.text },
+    tooltip: {
+      trigger: option.tooltip?.trigger || "item",
+      backgroundColor: CHART_COLORS.tooltipBg,
+      borderColor: CHART_COLORS.tooltipBorder,
+      textStyle: { color: CHART_COLORS.text },
     },
-    hLineWidth: function () {
-      return 0.7;
+    legend: {
+      top: "bottom",
+      textStyle: { color: CHART_COLORS.text },
     },
-    vLineWidth: function () {
-      return 0.7;
-    },
-    hLineColor: function () {
-      return "#90caf9";
-    },
-    vLineColor: function () {
-      return "#90caf9";
-    },
-    paddingLeft: function () {
-      return 6;
-    },
-    paddingRight: function () {
-      return 6;
-    },
-    paddingTop: function () {
-      return 4;
-    },
-    paddingBottom: function () {
-      return 4;
-    },
+    ...option,
   };
 }
+
 function getHeader(title) {
   return [
     {
@@ -224,6 +254,7 @@ function getHeader(title) {
     { text: " ", margin: [0, 0, 0, 10] },
   ];
 }
+
 function getFooter(currentPage, pageCount) {
   return {
     text: `Página ${currentPage} de ${pageCount}`,
@@ -233,6 +264,7 @@ function getFooter(currentPage, pageCount) {
     color: "#888",
   };
 }
+
 function getTableConfig(body) {
   if (body[0].length > 6) {
     return {
@@ -304,74 +336,112 @@ export default {
     chartEnrollmentsOption() {
       const x = this.enrollmentsSeries.map((i) => i.bucket);
       const y = this.enrollmentsSeries.map((i) => i.count);
-      return {
+
+      return darkBase({
         tooltip: { trigger: "axis" },
-        grid: { left: 40, right: 20, top: 40, bottom: 40 },
+        grid: { left: 48, right: 20, top: 30, bottom: 40 },
         xAxis: {
           type: "category",
           data: x,
-          axisLabel: { rotate: x.length > 8 ? 45 : 0 },
+          axisLabel: {
+            color: CHART_COLORS.text,
+            rotate: x.length > 8 ? 45 : 0,
+          },
+          axisLine: { lineStyle: { color: CHART_COLORS.axis } },
+          axisTick: { lineStyle: { color: CHART_COLORS.axis } },
         },
-        yAxis: { type: "value" },
+        yAxis: {
+          type: "value",
+          axisLabel: { color: CHART_COLORS.text },
+          axisLine: { lineStyle: { color: CHART_COLORS.axis } },
+          splitLine: { lineStyle: { color: CHART_COLORS.gridLine } },
+        },
+        color: CHART_COLORS.palette,
         series: [
           {
             type: "bar",
             data: y,
             barMaxWidth: 36,
-            itemStyle: { borderRadius: [4, 4, 0, 0] },
+            itemStyle: { borderRadius: [6, 6, 0, 0] },
           },
         ],
-      };
+      });
     },
+
     chartModalityOption() {
-      return {
+      return darkBase({
         tooltip: { trigger: "item", formatter: "{b}: {c} ({d}%)" },
-        legend: { top: "bottom" },
+        color: CHART_COLORS.palette,
         series: [
           {
             type: "pie",
             radius: ["40%", "70%"],
-            label: { show: true, formatter: "{b}\n{c} ({d}%)" },
+            label: {
+              show: true,
+              color: CHART_COLORS.text,
+              formatter: "{b}\n{c} ({d}%)",
+            },
+            labelLine: { lineStyle: { color: CHART_COLORS.text } },
             data: this.modalitySeries,
           },
         ],
-      };
+      });
     },
+
     chartTopCoursesOption() {
       const data = [...this.topCoursesSeries].sort((a, b) => a.count - b.count);
-      return {
+      return darkBase({
         tooltip: { trigger: "axis" },
-        grid: { left: 120, right: 30, top: 20, bottom: 20 },
-        xAxis: { type: "value" },
-        yAxis: { type: "category", data: data.map((i) => i.course) },
+        grid: { left: 140, right: 30, top: 20, bottom: 20 },
+        xAxis: {
+          type: "value",
+          axisLabel: { color: CHART_COLORS.text },
+          axisLine: { lineStyle: { color: CHART_COLORS.axis } },
+          splitLine: { lineStyle: { color: CHART_COLORS.gridLine } },
+        },
+        yAxis: {
+          type: "category",
+          data: data.map((i) => i.course),
+          axisLabel: { color: CHART_COLORS.text },
+          axisLine: { lineStyle: { color: CHART_COLORS.axis } },
+        },
+        color: CHART_COLORS.palette,
         series: [
-          { type: "bar", data: data.map((i) => i.count), barMaxWidth: 20 },
+          {
+            type: "bar",
+            data: data.map((i) => i.count),
+            barMaxWidth: 22,
+            itemStyle: { borderRadius: 6 },
+          },
         ],
-      };
+      });
     },
+
     chartGradesOption() {
       const { approved, failed, avg } = this.gradesDistribution;
-      return {
-        tooltip: { trigger: "item" },
+      return darkBase({
         title: {
           text: `Promedio: ${avg}`,
           left: "center",
           top: 0,
-          textStyle: { fontSize: 14 },
+          textStyle: { color: CHART_COLORS.text, fontSize: 14 },
         },
-        legend: { top: "bottom" },
+        legend: { top: "bottom", textStyle: { color: CHART_COLORS.text } },
+        color: [CHART_COLORS.palette[2], CHART_COLORS.palette[0]],
         series: [
           {
             name: "Estado",
             type: "pie",
             radius: "60%",
+            label: { color: CHART_COLORS.text },
+            labelLine: { lineStyle: { color: CHART_COLORS.text } },
             data: [
               { name: "Aprobados", value: approved },
               { name: "Reprobados", value: failed },
             ],
           },
         ],
-      };
+      });
     },
   },
   setup() {
@@ -388,11 +458,11 @@ export default {
         courseService.getAll(),
         modalityService.getAll(),
       ]);
-      this.courseOptions = courses.map((c) => ({
+      this.courseOptions = (courses || []).map((c) => ({
         label: `${c.name} (${c.parallel || "-"})`,
         value: c.id,
       }));
-      this.modalityOptions = modalities.map((m) => ({
+      this.modalityOptions = (modalities || []).map((m) => ({
         label: m.name,
         value: m.id,
       }));
@@ -419,37 +489,31 @@ export default {
             reportService.getTopCourses(params),
             reportService.getGradesDistribution(params),
           ]);
+
         this.kpi = {
-          enrollments: kpiRes?.enrollments || 0,
-          activeStudents: kpiRes?.activeStudents || 0,
+          enrollments: Number(kpiRes?.enrollments || 0),
+          activeStudents: Number(kpiRes?.activeStudents || 0),
           avgScore: Number(
-            (kpiRes?.avgScore || 0).toFixed
+            (kpiRes?.avgScore ?? 0).toFixed
               ? kpiRes.avgScore.toFixed(2)
-              : kpiRes?.avgScore || 0
+              : kpiRes?.avgScore ?? 0
           ),
           approvalRate: Number(
-            (kpiRes?.approvalRate || 0).toFixed
+            (kpiRes?.approvalRate ?? 0).toFixed
               ? kpiRes.approvalRate.toFixed(2)
-              : kpiRes?.approvalRate || 0
+              : kpiRes?.approvalRate ?? 0
           ),
         };
-        this.enrollmentsSeries = (enrollRes || []).map((r) => ({
-          bucket: r.bucket,
-          count: Number(r.count || 0),
-        }));
-        this.modalitySeries = (modRes || []).map((r) => ({
-          name: r.modality || "Sin modalidad",
-          value: Number(r.count || 0),
-        }));
-        this.topCoursesSeries = (topRes || []).map((r) => ({
-          course: r.course || "—",
-          count: Number(r.count || 0),
-        }));
+
+        this.enrollmentsSeries = this.normalizeOverTime(enrollRes);
+        this.modalitySeries = this.normalizeModality(modRes);
+        this.topCoursesSeries = this.normalizeTopCourses(topRes);
+
         this.gradesDistribution = {
           avg: Number(
-            (gradesRes?.avg || 0).toFixed
+            (gradesRes?.avg ?? 0).toFixed
               ? gradesRes.avg.toFixed(2)
-              : gradesRes?.avg || 0
+              : gradesRes?.avg ?? 0
           ),
           approved: Number(gradesRes?.approved || 0),
           failed: Number(gradesRes?.failed || 0),
@@ -461,6 +525,56 @@ export default {
         this.loading = false;
       }
     },
+    normalizeOverTime(resp) {
+      if (Array.isArray(resp)) {
+        return resp.map((r) => ({
+          bucket: r.bucket,
+          count: Number(r.count || 0),
+        }));
+      }
+      if (resp && Array.isArray(resp.labels) && Array.isArray(resp.series)) {
+        return resp.labels.map((label, i) => ({
+          bucket: label,
+          count: Number(resp.series[i] || 0),
+        }));
+      }
+      return [];
+    },
+    normalizeModality(resp) {
+      if (Array.isArray(resp)) {
+        return resp.map((r) => ({
+          name: r.modality || r.name || "Sin modalidad",
+          value: Number(r.count || r.value || 0),
+        }));
+      }
+      if (resp && Array.isArray(resp.labels) && Array.isArray(resp.series)) {
+        return resp.labels.map((label, i) => ({
+          name: label || "Sin modalidad",
+          value: Number(resp.series[i] || 0),
+        }));
+      }
+      return [];
+    },
+    normalizeTopCourses(resp) {
+      if (Array.isArray(resp)) {
+        return resp.map((r) => ({
+          course:
+            r.course ||
+            `${r.name || ""}${r.parallel ? ` (${r.parallel})` : ""}`.trim(),
+          count: Number(r.count || r.total || 0),
+        }));
+      }
+      if (resp && Array.isArray(resp.items)) {
+        return resp.items.map((r) => ({
+          course:
+            r.course ||
+            `${r.name || ""}${r.parallel ? ` (${r.parallel})` : ""}`.trim(),
+          count: Number(r.count || r.total || 0),
+        }));
+      }
+      return [];
+    },
+
     handleExport(key) {
       switch (key) {
         case "pdf-dashboard":

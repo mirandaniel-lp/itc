@@ -3,9 +3,6 @@
     <div class="mx-auto max-w-6xl p-6 md:p-8 space-y-8">
       <div class="flex items-start justify-between gap-4">
         <div class="space-y-2">
-          <p class="text-xs uppercase tracking-widest text-[#7aa2ff]/70">
-            Actividad
-          </p>
           <h1 class="text-3xl md:text-4xl font-extrabold">
             {{ activity?.title || "Detalle de Actividad" }}
           </h1>
@@ -13,15 +10,6 @@
             <span
               class="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5"
             >
-              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M8 7V3m8 4V3M5 11h14M7 21h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
               <span class="text-gray-300">Vence:</span>
               <strong class="text-white">{{ formattedDeadline }}</strong>
             </span>
@@ -71,7 +59,7 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
         <div class="lg:col-span-2 space-y-6">
           <section
             class="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-5"

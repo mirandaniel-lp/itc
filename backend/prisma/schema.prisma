@@ -18,6 +18,13 @@ enum PaymentType {
   MENSUAL
 }
 
+enum AttendanceStatus {
+  PRESENTE
+  AUSENTE
+  LICENCIA
+  TARDE
+}
+
 model Role {
   id    Int    @id @default(autoincrement())
   name  String @unique
@@ -52,7 +59,8 @@ model Student {
   updated_at       DateTime @updatedAt
 
   enrollments Enrollment[]
-  grades      Grade[] 
+  grades      Grade[]
+  attendances Attendance[]
 }
 
 model Teacher {
@@ -60,9 +68,9 @@ model Teacher {
   last_name        String
   second_last_name String?
   name             String
-  ci               String    @unique
-  email            String?   @unique
-  password         String? 
+  ci               String   @unique
+  email            String?  @unique
+  password         String?
   dateofbirth      DateTime
   placeofbirth     String
   phone            String   @db.VarChar(10)
@@ -106,6 +114,7 @@ model Course {
 
   enrollments Enrollment[]
   activities  Activity[]
+  attendances Attendance[]
 }
 
 model Enrollment {
@@ -144,9 +153,31 @@ model Grade {
   studentId  BigInt
   score      Decimal  @db.Decimal(5, 2)
   feedback   String?  @db.Text
-  status      Boolean  @default(true)
+  status     Boolean  @default(true)
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
-  activity Activity @relation(fields: [activityId], references: [id])
-  student  Student  @relation(fields: [studentId], references: [id])
+  activity   Activity @relation(fields: [activityId], references: [id])
+  student    Student  @relation(fields: [studentId], references: [id])
+}
+
+model Attendance {
+  id            BigInt           @id @default(autoincrement())
+  studentId     BigInt
+  courseId      BigInt
+  date          DateTime
+  status        AttendanceStatus
+  checkinAt     DateTime?
+  checkoutAt    DateTime?
+  justification String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  course  Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, courseId, date])
+  @@index([courseId, date])
+  @@index([studentId, date])
+  @@index([status, date])
 }

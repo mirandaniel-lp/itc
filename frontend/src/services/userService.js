@@ -1,41 +1,22 @@
-import axios from "axios";
+import http from "./http";
 
-const API_URL = "http://localhost:3000/api/users";
-
-const apiClient = axios.create({
-  baseURL: API_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
-  withCredentials: true,
-});
-
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+const API = "/users";
 
 export default {
-  async getUsers() {
-    const res = await apiClient.get("/");
-    return res.data.users;
+  async getUsers(params) {
+    const { data } = await http.get(API, { params });
+    return data.users ?? data;
   },
-
   async getUser(id) {
-    const res = await apiClient.get(`/${id}`);
-    return res.data.user;
+    const { data } = await http.get(`${API}/${id}`);
+    return data.user ?? data;
   },
-
-  async updateUser(id, data) {
-    const res = await apiClient.put(`/${id}`, data);
-    return res.data.user;
+  async updateUser(id, payload) {
+    const { data } = await http.put(`${API}/${id}`, payload);
+    return data.user ?? data;
   },
-
   async deleteUser(id) {
-    const res = await apiClient.delete(`/${id}`);
-    return res.data.message;
+    const { data } = await http.delete(`${API}/${id}`);
+    return data.message ?? data;
   },
 };

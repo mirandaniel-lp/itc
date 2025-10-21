@@ -1,10 +1,25 @@
 import { createRouter, createWebHistory } from "vue-router";
+import AuthService from "@/services/authService";
+import { ROLES } from "@/constants/roles";
+
+let cachedUser = null;
+
+function publicPaths() {
+  return ["/login", "/register", "/teacher/login"];
+}
+
+function isAllowed(roleName, path) {
+  if (!roleName) return false;
+  if (roleName === ROLES.ADMINISTRADOR) return true;
+  if (roleName === ROLES.GERENTE) return !path.startsWith("/enrollments");
+  if (roleName === ROLES.SECRETARIA)
+    return path.startsWith("/students") || path.startsWith("/enrollments");
+  if (roleName === ROLES.USUARIO) return path === "/home";
+  return false;
+}
 
 const routes = [
-  {
-    path: "/",
-    redirect: "/login",
-  },
+  { path: "/", redirect: "/login" },
   {
     path: "/home",
     name: "home",
@@ -20,6 +35,7 @@ const routes = [
     name: "register",
     component: () => import("@/views/authentication/RegisterView.vue"),
   },
+
   {
     path: "/users",
     name: "users",
@@ -31,6 +47,7 @@ const routes = [
     component: () => import("@/views/users/EditUserView.vue"),
     props: true,
   },
+
   {
     path: "/students",
     name: "students",
@@ -47,6 +64,7 @@ const routes = [
     component: () => import("@/views/students/EditStudentView.vue"),
     props: true,
   },
+
   {
     path: "/teachers",
     name: "teachers",
@@ -63,6 +81,7 @@ const routes = [
     component: () => import("@/views/teachers/EditTeacherView.vue"),
     props: true,
   },
+
   {
     path: "/courses",
     name: "courses",
@@ -79,6 +98,7 @@ const routes = [
     component: () => import("@/views/courses/EditCourseView.vue"),
     props: true,
   },
+
   {
     path: "/enrollments",
     name: "enrollments",
@@ -89,6 +109,7 @@ const routes = [
     name: "create-enrollment",
     component: () => import("@/views/enrollments/CreateEnrollmentView.vue"),
   },
+
   {
     path: "/activities",
     name: "activities",
@@ -104,19 +125,10 @@ const routes = [
     name: "ActivityDetail",
     component: () => import("@/views/activities/ActivityDetailView.vue"),
   },
-  {
-    path: "/grades/create",
-    name: "CreateGrade",
-    component: () => import("@/views/grades/CreateGradeView.vue"),
-  },
+
   {
     path: "/grades",
     name: "grades",
-    component: () => import("@/views/grades/ListGradesView.vue"),
-  },
-  {
-    path: "/grades/by-activity",
-    name: "GradesByActivity",
     component: () => import("@/views/grades/GradesByActivityView.vue"),
   },
   {
@@ -129,21 +141,44 @@ const routes = [
     name: "reports",
     component: () => import("@/views/reports/ReportsView.vue"),
   },
-  {
-    path: "/teacher/dashboard",
-    name: "teacher-dashboard",
-    component: () => import("@/views/teacher/TeacherDashboardView.vue"),
-  },
+
   {
     path: "/teacher/login",
     name: "teacher-login",
     component: () => import("@/views/authentication/TeacherLoginView.vue"),
+  },
+
+  {
+    path: "/restricted",
+    name: "restricted",
+    component: () => import("@/views/RestrictedView.vue"),
   },
 ];
 
 const router = createRouter({
   history: createWebHistory(process.env.BASE_URL),
   routes,
+});
+
+router.beforeEach(async (to, from, next) => {
+  if (publicPaths().includes(to.path)) return next();
+
+  const token = localStorage.getItem("token");
+  if (!token) return next("/login");
+
+  try {
+    if (!cachedUser) {
+      const { user } = await AuthService.getUser();
+      cachedUser = user;
+    }
+  } catch {
+    localStorage.removeItem("token");
+    return next("/login");
+  }
+
+  const roleName = cachedUser?.role?.name || "";
+  if (!isAllowed(roleName, to.path)) return next("/restricted");
+  return next();
 });
 
 export default router;

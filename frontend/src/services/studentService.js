@@ -1,55 +1,35 @@
-import axios from "axios";
+import http from "./http";
 
-const API_URL = "http://localhost:3000/api/students";
-const COURSES_API_URL = "http://localhost:3000/api/courses";
-
-const apiClient = axios.create({
-  baseURL: API_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
-  withCredentials: true,
-});
-
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+const API = "/students";
+const COURSES_API = "/courses";
 
 export default {
-  async getAll() {
-    const res = await apiClient.get("/");
-    return res.data.students;
+  async getAll(params) {
+    const { data } = await http.get(API, { params });
+    return data.students ?? data;
   },
   async getById(id) {
-    const res = await apiClient.get(`/${id}`);
-    return res.data.student;
+    const { data } = await http.get(`${API}/${id}`);
+    return data.student ?? data;
   },
-  async create(data) {
-    const res = await apiClient.post("/", data, {
+  async create(formData) {
+    const { data } = await http.post(API, formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
-    return res.data.student;
+    return data.student ?? data;
   },
-  async update(id, data) {
-    const res = await apiClient.put(`/${id}`, data, {
+  async update(id, formData) {
+    const { data } = await http.put(`${API}/${id}`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
-    return res.data.student;
+    return data.student ?? data;
   },
   async remove(id) {
-    const res = await apiClient.delete(`/${id}`);
-    return res.data.message;
+    const { data } = await http.delete(`${API}/${id}`);
+    return data.message ?? data;
   },
   async getByCourse(courseId) {
-    const token = localStorage.getItem("token");
-    const res = await axios.get(`${COURSES_API_URL}/${courseId}/students`, {
-      headers: { Authorization: `Bearer ${token}` },
-      withCredentials: true,
-    });
-    return res.data.students;
+    const { data } = await http.get(`${COURSES_API}/${courseId}/students`);
+    return data.students ?? data;
   },
 };

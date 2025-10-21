@@ -28,7 +28,6 @@
           />
           <n-button
             class="px-3 py-1.5 rounded-lg text-sm font-bold bg-gradient-to-r from-[#1e3a8a] to-[#2563eb] text-white hover:shadow-[0_0_15px_rgba(37,99,235,0.5)] transition-all"
-            ghost
             @click="applyGlobalScore"
             :disabled="!grades.length"
           >
@@ -36,15 +35,13 @@
           </n-button>
           <n-button
             class="px-3 py-1.5 rounded-lg text-sm font-bold bg-gradient-to-r from-[#ff1953] to-[#ff3064] text-white hover:shadow-[0_0_15px_rgba(37,99,235,0.5)] transition-all"
-            ghost
             @click="clearAllScores"
             :disabled="!grades.length"
           >
-            Limpiar notas
+            Limpiar
           </n-button>
           <n-button
             class="rounded-md bg-gradient-to-r from-[#1aff94] to-[#02cc6e] px-3 py-1.5 text-xs font-bold text-white hover:from-[#1aff94] hover:to-[#1aff94] transition"
-            ghost
             :loading="saving"
             @click="saveAll"
             :disabled="!grades.length"

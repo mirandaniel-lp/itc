@@ -9,7 +9,6 @@ import courseRoutes from "./routes/courseRoutes.js";
 import enrollmentRoutes from "./routes/enrollmentRoutes.js";
 import modalityRoutes from "./routes/modalityRoutes.js";
 import activityRoutes from "./routes/activityRoutes.js";
-import teacherDashboardRoutes from "./routes/teacherDashboardRoutes.js";
 import gradeRoutes from "./routes/gradeRoutes.js";
 import attendanceRoutes from "./routes/attendanceRoutes.js";
 import reportsRoutes from "./routes/reportsRoutes.js";
@@ -41,8 +40,6 @@ app.use("/api/modalities", modalityRoutes);
 app.use("/api/activities", activityRoutes);
 app.use("/api/grades", gradeRoutes);
 app.use("/api/attendance", attendanceRoutes);
-
-app.use("/api/teachers/dashboard", teacherDashboardRoutes);
 app.use("/api/reports", reportsRoutes);
 
 app.listen(PORT, () => {

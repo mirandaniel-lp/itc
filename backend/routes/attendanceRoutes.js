@@ -6,11 +6,13 @@ import {
   saveGrid,
   updateOne,
   statsByCourseDate,
+  getCourseDates,
 } from "../controllers/attendanceController.js";
 
 const router = Router();
 router.use(authenticate);
 
+router.get("/course-dates", getCourseDates);
 router.get("/roster", getRoster);
 router.get("/stats", statsByCourseDate);
 router.post("/bulk", markBulk);

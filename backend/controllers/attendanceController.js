@@ -24,9 +24,58 @@ function parseCourseDate(req) {
   return { courseId, date };
 }
 
+async function assertDateInCourse(courseId, date) {
+  const course = await prisma.course.findUnique({
+    where: { id: courseId },
+    select: { start_date: true, end_date: true },
+  });
+  if (!course) {
+    const err = new Error("Curso no encontrado.");
+    err.status = 404;
+    throw err;
+  }
+  const start = new Date(course.start_date);
+  start.setHours(0, 0, 0, 0);
+  const end = course.end_date ? new Date(course.end_date) : null;
+  if (end) end.setHours(0, 0, 0, 0);
+  if (date < start || (end && date > end)) {
+    const err = new Error("La fecha está fuera del rango del curso.");
+    err.status = 400;
+    throw err;
+  }
+  return { start_date: start, end_date: end };
+}
+
+export const getCourseDates = async (req, res) => {
+  try {
+    const courseIdRaw = req.query.courseId;
+    if (!courseIdRaw) {
+      return res.status(400).json({ error: "courseId es requerido." });
+    }
+    const courseId = BigInt(courseIdRaw);
+    const course = await prisma.course.findUnique({
+      where: { id: courseId },
+      select: { start_date: true, end_date: true },
+    });
+    if (!course) return res.status(404).json({ error: "Curso no encontrado." });
+    res.json(
+      serialize({
+        courseId,
+        start_date: course.start_date,
+        end_date: course.end_date,
+      })
+    );
+  } catch (err) {
+    res
+      .status(err.status || 500)
+      .json({ error: err.message || "Error al obtener fechas del curso." });
+  }
+};
+
 export const getRoster = async (req, res) => {
   try {
     const { courseId, date } = parseCourseDate(req);
+    await assertDateInCourse(courseId, date);
     const enrollments = await prisma.enrollment.findMany({
       where: { courseId, status: true },
       include: { student: true },
@@ -74,6 +123,7 @@ export const getRoster = async (req, res) => {
 export const markBulk = async (req, res) => {
   try {
     const { courseId, date } = parseCourseDate(req);
+    await assertDateInCourse(courseId, date);
     const items = Array.isArray(req.body.items) ? req.body.items : [];
     if (items.length === 0)
       return res
@@ -100,6 +150,7 @@ export const markBulk = async (req, res) => {
 export const saveGrid = async (req, res) => {
   try {
     const { courseId, date } = parseCourseDate(req);
+    await assertDateInCourse(courseId, date);
     const rows = Array.isArray(req.body.rows) ? req.body.rows : [];
     if (rows.length === 0)
       return res
@@ -156,6 +207,7 @@ export const updateOne = async (req, res) => {
 export const statsByCourseDate = async (req, res) => {
   try {
     const { courseId, date } = parseCourseDate(req);
+    await assertDateInCourse(courseId, date);
     const grouped = await prisma.attendance.groupBy({
       by: ["status"],
       where: { courseId, date },

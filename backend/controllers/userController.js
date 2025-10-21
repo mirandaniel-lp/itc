@@ -35,11 +35,11 @@ export const getUserById = async (req, res) => {
       select: {
         id: true,
         email: true,
+        email_verified_at: true,
         roleId: true,
-        role: {
-          select: { name: true },
-        },
+        role: { select: { name: true } },
         created_at: true,
+        updated_at: true,
         status: true,
       },
     });

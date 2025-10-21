@@ -199,66 +199,93 @@ export default {
       localStorage.setItem("sidebar_collapsed", v ? "1" : "0");
     });
 
-    const menuOptions = computed(() => [
-      { label: "Inicio", key: "/home", icon: renderIcon(HomeOutline) },
-      { label: "Usuarios", key: "/users", icon: renderIcon(PeopleOutline) },
-      {
-        label: "Estudiantes",
-        key: "/students",
-        icon: renderIcon(SchoolOutline),
-        children: [
-          { label: "Lista de Estudiantes", key: "/students" },
-          { label: "Registrar Estudiante", key: "/students/create" },
-        ],
-      },
-      {
-        label: "Docentes",
-        key: "/teachers",
-        icon: renderIcon(PeopleOutline),
-        children: [
-          { label: "Lista de Docentes", key: "/teachers" },
-          { label: "Registrar Docente", key: "/teachers/create" },
-        ],
-      },
-      {
-        label: "Cursos",
-        key: "/courses",
-        icon: renderIcon(BookOutline),
-        children: [
-          { label: "Lista de Cursos", key: "/courses" },
-          { label: "Registrar Curso", key: "/courses/create" },
-        ],
-      },
-      {
-        label: "Inscripciones",
-        key: "/enrollments",
-        icon: renderIcon(CashOutline),
-        children: [
-          { label: "Lista de Inscripciones", key: "/enrollments" },
-          { label: "Nueva Inscripción", key: "/enrollments/create" },
-        ],
-      },
-      {
-        label: "Actividades",
-        key: "/activities",
-        icon: renderIcon(BookOutline),
-        children: [
-          { label: "Lista de Actividades", key: "/activities" },
-          { label: "Registrar Actividad", key: "/activities/create" },
-        ],
-      },
-      {
-        label: "Calificaciones",
-        key: "/grades/by-activity",
-        icon: renderIcon(SchoolOutline),
-      },
-      {
-        label: "Asistencias",
-        key: "/attendances",
-        icon: renderIcon(SchoolOutline),
-      },
-      { label: "Reportes", key: "/reports", icon: renderIcon(PieChartOutline) },
-    ]);
+    const menuOptions = computed(() => {
+      const role = user.value?.role?.name;
+
+      const base = [
+        { label: "Inicio", key: "/home", icon: renderIcon(HomeOutline) },
+        { label: "Usuarios", key: "/users", icon: renderIcon(PeopleOutline) },
+        {
+          label: "Estudiantes",
+          key: "/students",
+          icon: renderIcon(SchoolOutline),
+          children: [
+            { label: "Lista de Estudiantes", key: "/students" },
+            { label: "Registrar Estudiante", key: "/students/create" },
+          ],
+        },
+        {
+          label: "Docentes",
+          key: "/teachers",
+          icon: renderIcon(PeopleOutline),
+          children: [
+            { label: "Lista de Docentes", key: "/teachers" },
+            { label: "Registrar Docente", key: "/teachers/create" },
+          ],
+        },
+        {
+          label: "Cursos",
+          key: "/courses",
+          icon: renderIcon(BookOutline),
+          children: [
+            { label: "Lista de Cursos", key: "/courses" },
+            { label: "Registrar Curso", key: "/courses/create" },
+          ],
+        },
+        {
+          label: "Inscripciones",
+          key: "/enrollments",
+          icon: renderIcon(CashOutline),
+          children: [
+            { label: "Lista de Inscripciones", key: "/enrollments" },
+            { label: "Nueva Inscripción", key: "/enrollments/create" },
+          ],
+        },
+        {
+          label: "Actividades",
+          key: "/activities",
+          icon: renderIcon(BookOutline),
+        },
+        {
+          label: "Calificaciones",
+          key: "/grades",
+          icon: renderIcon(SchoolOutline),
+        },
+        {
+          label: "Asistencias",
+          key: "/attendances",
+          icon: renderIcon(SchoolOutline),
+        },
+        {
+          label: "Reportes",
+          key: "/reports",
+          icon: renderIcon(PieChartOutline),
+        },
+      ];
+
+      if (role === "ADMINISTRADOR") return base;
+
+      if (role === "GERENTE") {
+        return base.filter(
+          (item) => !String(item.key).startsWith("/enrollments")
+        );
+      }
+
+      if (role === "SECRETARÍA") {
+        return base.filter(
+          (item) =>
+            String(item.key).startsWith("/students") ||
+            String(item.key).startsWith("/enrollments") ||
+            String(item.key) === "/home"
+        );
+      }
+
+      if (role === "USUARIO") {
+        return base.filter((item) => String(item.key) === "/home");
+      }
+
+      return base.filter((item) => String(item.key) === "/home");
+    });
 
     const currentMenuKey = computed(() => route.path);
     function onMenuSelect(key) {

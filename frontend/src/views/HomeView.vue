@@ -40,7 +40,6 @@
     </div>
   </app-layout>
 </template>
-
 <script>
 import AppLayout from "@/layouts/AppLayout.vue";
 import AppCard from "@/components/AppCard.vue";
@@ -71,8 +70,7 @@ export default {
   methods: {
     setupCards() {
       const role = this.user?.role?.name;
-
-      if (role === "ADMIN") {
+      if (role === "ADMINISTRADOR") {
         this.cards = [
           {
             title: "Gestión de Cursos",
@@ -94,40 +92,6 @@ export default {
             button: "Ver Docentes",
             route: "/teachers",
             icon: SchoolOutline,
-          },
-        ];
-      } else if (role === "DOCENTE") {
-        this.cards = [
-          {
-            title: "Mis Cursos",
-            subtitle: "Gestiona tus cursos y actividades",
-            button: "Ver Mis Cursos",
-            route: "/courses",
-            icon: BookOutline,
-          },
-          {
-            title: "Calificaciones",
-            subtitle: "Registra y revisa notas",
-            button: "Ver Calificaciones",
-            route: "/grades",
-            icon: PeopleOutline,
-          },
-        ];
-      } else if (role === "ESTUDIANTE") {
-        this.cards = [
-          {
-            title: "Mis Cursos",
-            subtitle: "Consulta tus cursos inscritos",
-            button: "Ver Mis Cursos",
-            route: "/courses",
-            icon: BookOutline,
-          },
-          {
-            title: "Mis Calificaciones",
-            subtitle: "Revisa tus notas",
-            button: "Ver Calificaciones",
-            route: "/grades",
-            icon: PeopleOutline,
           },
         ];
       } else {

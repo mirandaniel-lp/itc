@@ -1,60 +1,30 @@
-import axios from "axios";
+import http from "./http";
 
-const API_URL = "http://localhost:3000/api/activities";
-
-const getAll = () => {
-  const token = localStorage.getItem("token");
-  return axios
-    .get(API_URL, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    .then((res) => res.data.activities);
-};
-
-const getById = (id) => {
-  const token = localStorage.getItem("token");
-  return axios
-    .get(`${API_URL}/${id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    .then((res) => res.data);
-};
-
-const create = (data) => {
-  const token = localStorage.getItem("token");
-  return axios.post(API_URL, data, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-};
-
-const update = (id, data) => {
-  const token = localStorage.getItem("token");
-  return axios.put(`${API_URL}/${id}`, data, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-};
-
-const remove = (id) => {
-  const token = localStorage.getItem("token");
-  return axios.delete(`${API_URL}/${id}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-};
-
-const getActivitiesByCourse = (courseId) => {
-  const token = localStorage.getItem("token");
-  return axios
-    .get(`${API_URL}/course/${courseId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    .then((res) => res.data.activities);
-};
+const API = "/activities";
 
 export default {
-  getAll,
-  getById,
-  create,
-  update,
-  remove,
-  getActivitiesByCourse,
+  async getAll(params) {
+    const { data } = await http.get(API, { params });
+    return data.activities ?? data;
+  },
+  async getById(id) {
+    const { data } = await http.get(`${API}/${id}`);
+    return data.activity ?? data;
+  },
+  async create(payload) {
+    const { data } = await http.post(API, payload);
+    return data.activity ?? data;
+  },
+  async update(id, payload) {
+    const { data } = await http.put(`${API}/${id}`, payload);
+    return data.activity ?? data;
+  },
+  async remove(id) {
+    const { data } = await http.delete(`${API}/${id}`);
+    return data.message ?? data;
+  },
+  async getActivitiesByCourse(courseId) {
+    const { data } = await http.get(`${API}/course/${courseId}`);
+    return data.activities ?? data;
+  },
 };

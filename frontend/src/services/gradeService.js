@@ -1,29 +1,22 @@
-import axios from "axios";
-const API_URL = "http://localhost:3000/api/grades";
+import http from "./http";
 
-const getGradesByActivity = (activityId) => {
-  const token = localStorage.getItem("token");
-  return axios.get(`${API_URL}/activity/${activityId}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-};
-
-const updateGrade = (id, data) => {
-  const token = localStorage.getItem("token");
-  return axios.put(`${API_URL}/${id}`, data, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-};
-
-const createGrade = (data) => {
-  const token = localStorage.getItem("token");
-  return axios.post(API_URL, data, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-};
+const API = "/grades";
 
 export default {
-  getGradesByActivity,
-  updateGrade,
-  createGrade,
+  async getAll(params) {
+    const { data } = await http.get(API, { params });
+    return data.grades ?? data;
+  },
+  async getGradesByActivity(activityId) {
+    const { data } = await http.get(`${API}/activity/${activityId}`);
+    return data.grades ?? data;
+  },
+  async updateGrade(id, payload) {
+    const { data } = await http.put(`${API}/${id}`, payload);
+    return data;
+  },
+  async createGrade(payload) {
+    const { data } = await http.post(API, payload);
+    return data;
+  },
 };

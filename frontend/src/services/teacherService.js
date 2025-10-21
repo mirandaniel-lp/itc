@@ -1,36 +1,26 @@
-import axios from "axios";
+import http from "./http";
 
-const api = axios.create({
-  baseURL: "http://localhost:3000/api/teachers",
-  headers: { "Content-Type": "application/json" },
-  withCredentials: true,
-});
-
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
+const API = "/teachers";
 
 export default {
-  async getAll() {
-    const res = await api.get("/");
-    return res.data.teachers;
+  async getAll(params) {
+    const { data } = await http.get(API, { params });
+    return data.teachers ?? data;
   },
   async getById(id) {
-    const res = await api.get(`/${id}`);
-    return res.data.teacher;
+    const { data } = await http.get(`${API}/${id}`);
+    return data.teacher ?? data;
   },
-  async create(data) {
-    const res = await api.post("/", data);
-    return res.data.teacher;
+  async create(payload) {
+    const { data } = await http.post(API, payload);
+    return data.teacher ?? data;
   },
-  async update(id, data) {
-    const res = await api.put(`/${id}`, data);
-    return res.data.teacher;
+  async update(id, payload) {
+    const { data } = await http.put(`${API}/${id}`, payload);
+    return data.teacher ?? data;
   },
   async remove(id) {
-    const res = await api.delete(`/${id}`);
-    return res.data.message;
+    const { data } = await http.delete(`${API}/${id}`);
+    return data.message ?? data;
   },
 };

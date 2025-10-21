@@ -7,6 +7,14 @@
           <p class="text-sm text-white/60">{{ formattedDate }}</p>
         </div>
         <div class="flex gap-3">
+          <n-select
+            v-model:value="courseId"
+            :options="courseOptions"
+            placeholder="Seleccionar curso"
+            class="w-72"
+            size="small"
+            virtual-scroll
+          />
           <n-date-picker
             v-model:formatted-value="date"
             value-format="yyyy-MM-dd"
@@ -14,13 +22,8 @@
             size="small"
             clearable
             placeholder="Selecciona una fecha"
-          />
-          <n-select
-            v-model:value="courseId"
-            :options="courseOptions"
-            placeholder="Seleccionar curso"
-            class="w-72"
-            size="small"
+            :disabled="!courseId || !dateMin"
+            :is-date-disabled="isOutOfRange"
           />
         </div>
       </div>
@@ -74,8 +77,12 @@
             placeholder="Selecciona un estado..."
             class="w-64"
             size="small"
+            :disabled="!courseId || !date"
           />
-          <n-button size="small" :disabled="!massStatus" @click="applyMass"
+          <n-button
+            size="small"
+            :disabled="!massStatus || !courseId || !date"
+            @click="applyMass"
             >Aplicar a todos</n-button
           >
         </div>
@@ -160,8 +167,12 @@
           </div>
         </div>
         <div class="p-4 border-t border-white/10 flex justify-end">
-          <n-button type="primary" :loading="saving" @click="save"
-            >Guardar Asistencia</n-button
+          <n-button
+            type="primary"
+            :loading="saving"
+            :disabled="!courseId || !date"
+            @click="save"
+            >Guardar</n-button
           >
         </div>
       </div>
@@ -176,12 +187,14 @@ import axios from "axios";
 import attendanceService from "@/services/attendanceService";
 
 const courseId = ref(null);
-const date = ref(new Date().toISOString().slice(0, 10));
+const date = ref(null);
 const loading = ref(false);
 const saving = ref(false);
 const roster = ref([]);
 const courseOptions = ref([]);
 const massStatus = ref(null);
+const dateMin = ref(null);
+const dateMax = ref(null);
 
 const statusOptions = [
   { label: "Presente", value: "PRESENTE" },
@@ -199,7 +212,9 @@ const totals = computed(() => ({
 }));
 
 const formattedDate = computed(() => {
+  if (!date.value) return "Selecciona una fecha";
   const d = new Date(date.value);
+  if (Number.isNaN(d.getTime())) return "Selecciona una fecha";
   return d.toLocaleDateString("es-ES", {
     weekday: "long",
     year: "numeric",
@@ -235,16 +250,42 @@ async function loadCourses() {
     label: `${c.name}${c.parallel ? " - " + c.parallel : ""}`,
     value: String(c.id),
   }));
-  if (!courseId.value && courseOptions.value.length)
-    courseId.value = courseOptions.value[0].value;
+}
+
+async function loadCourseDates() {
+  dateMin.value = null;
+  dateMax.value = null;
+  date.value = null;
+  if (!courseId.value) return;
+  const info = await attendanceService.getCourseDates(courseId.value);
+  const start = new Date(info.start_date);
+  start.setHours(0, 0, 0, 0);
+  dateMin.value = start.getTime();
+  if (info.end_date) {
+    const end = new Date(info.end_date);
+    end.setHours(0, 0, 0, 0);
+    dateMax.value = end.getTime();
+  } else {
+    dateMax.value = null;
+  }
+}
+
+function isOutOfRange(ts) {
+  if (!dateMin.value) return true;
+  if (dateMax.value && ts > dateMax.value) return true;
+  if (ts < dateMin.value) return true;
+  return false;
 }
 
 async function loadRoster() {
   if (!courseId.value || !date.value) return;
   loading.value = true;
   try {
-    const data = await attendanceService.getRoster(courseId.value, date.value);
-    roster.value = data.roster.map((r) => ({
+    const dataResp = await attendanceService.getRoster(
+      courseId.value,
+      date.value
+    );
+    roster.value = dataResp.roster.map((r) => ({
       order: r.order,
       studentId: String(r.studentId),
       fullName: r.fullName,
@@ -270,7 +311,7 @@ function applyMass() {
 }
 
 async function save() {
-  if (!courseId.value) return;
+  if (!courseId.value || !date.value) return;
   saving.value = true;
   try {
     const rows = roster.value.map((r) => ({
@@ -289,11 +330,12 @@ async function save() {
 
 const autoLoad = debounce(loadRoster, 250);
 
-watch(courseId, () => autoLoad());
+watch(courseId, async () => {
+  await loadCourseDates();
+});
 watch(date, () => autoLoad());
 
 onMounted(async () => {
   await loadCourses();
-  await loadRoster();
 });
 </script>

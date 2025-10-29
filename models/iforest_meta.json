@@ -1,0 +1,22 @@
+{
+  "version": "IF-20251028-025626",
+  "features": [
+    "gender_f",
+    "age",
+    "days_since_enrollment",
+    "marks_total",
+    "attendance_pct",
+    "absences",
+    "tardies",
+    "absences_30d",
+    "tardies_30d",
+    "avg_hours",
+    "items_count",
+    "grade_avg",
+    "grade_p25",
+    "fail_fraction",
+    "days_since_last_grade"
+  ],
+  "contamination": 0.18,
+  "threshold": -0.5700882513928722
+}

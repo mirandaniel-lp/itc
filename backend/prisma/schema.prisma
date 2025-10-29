@@ -41,6 +41,14 @@ enum Shift {
   NOCHE
 }
 
+enum ActivityType {
+  EXAMEN
+  PRACTICA
+  TAREA
+  PROYECTO
+  OTRO
+}
+
 model Role {
   id    Int    @id @default(autoincrement())
   name  String @unique
@@ -57,6 +65,7 @@ model User {
   status            Boolean   @default(true)
   roleId            Int
   role              Role      @relation(fields: [roleId], references: [id])
+  notificationRecipients NotificationRecipient[]
 }
 
 model AcademicTerm {
@@ -121,7 +130,7 @@ model Teacher {
   ci               String   @unique
   email            String?  @unique
   password         String?
-  dateofbirth      DateTime
+  dateofbirth      DateTime?
   placeofbirth     String
   phone            String   @db.VarChar(10)
   gender           Gender
@@ -154,9 +163,15 @@ model Student {
   attendances      Attendance[]
   contacts         StudentContact[]
 
+  app_username     String?  @unique
+  app_password_hash String?
+  app_enabled      Boolean  @default(true)
+
   @@index([status])
   @@index([ci])
+  dropoutAlerts  DropoutAlert[]
 }
+
 
 model StudentContact {
   id          BigInt   @id @default(autoincrement())
@@ -204,18 +219,19 @@ model Course {
   @@index([programId])
   @@index([status])
   @@unique([name, parallel, termId])
+  dropoutAlerts  DropoutAlert[]
 }
 
 model CourseSchedule {
-  id          BigInt   @id @default(autoincrement())
+  id          BigInt    @id @default(autoincrement())
   courseId    BigInt
   classroomId BigInt
   weekday     Weekday
-  start_time  String   @db.VarChar(5)
-  end_time    String   @db.VarChar(5)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-  course      Course   @relation(fields: [courseId], references: [id])
+  start_time  String    @db.VarChar(5)
+  end_time    String    @db.VarChar(5)
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  course      Course    @relation(fields: [courseId], references: [id])
   classroom   Classroom @relation(fields: [classroomId], references: [id])
 
   @@unique([courseId, weekday, start_time, end_time])
@@ -250,33 +266,38 @@ model Enrollment {
 }
 
 model Activity {
-  id          BigInt   @id @default(autoincrement())
-  title       String   @db.VarChar(100)
-  description String?  @db.Text
-  weight_pct  Decimal? @db.Decimal(5, 2)
-  status      Boolean  @default(true)
-  courseId    BigInt
-  teacherId   BigInt
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-  course      Course  @relation(fields: [courseId], references: [id])
-  teacher     Teacher @relation(fields: [teacherId], references: [id])
-  grades      Grade[]
+  id           BigInt       @id @default(autoincrement())
+  title        String       @db.VarChar(100)
+  description  String?      @db.Text
+  weight_pct   Decimal?     @db.Decimal(5, 2)
+  status       Boolean      @default(true)
+  courseId     BigInt
+  teacherId    BigInt
+  type         ActivityType @default(OTRO)
+  due_date     DateTime?
+  is_published Boolean      @default(false)
+  created_at   DateTime     @default(now())
+  updated_at   DateTime     @updatedAt
+  course       Course       @relation(fields: [courseId], references: [id])
+  teacher      Teacher      @relation(fields: [teacherId], references: [id])
+  grades       Grade[]
 
   @@index([courseId, status])
+  @@index([teacherId])
 }
 
 model Grade {
-  id         BigInt   @id @default(autoincrement())
-  activityId BigInt
-  studentId  BigInt
-  score      Decimal  @db.Decimal(5, 2)
-  feedback   String?  @db.Text
-  status     Boolean  @default(true)
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-  activity   Activity @relation(fields: [activityId], references: [id])
-  student    Student  @relation(fields: [studentId], references: [id])
+  id            BigInt   @id @default(autoincrement())
+  activityId    BigInt
+  studentId     BigInt
+  score         Decimal  @db.Decimal(5, 2)
+  feedback      String?  @db.Text
+  status        Boolean  @default(true)
+  is_published  Boolean  @default(false)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+  activity      Activity @relation(fields: [activityId], references: [id])
+  student       Student  @relation(fields: [studentId], references: [id])
 
   @@unique([activityId, studentId])
   @@index([studentId])
@@ -310,4 +331,78 @@ model AcademicHoliday {
   updated_at  DateTime @updatedAt
 
   @@index([date])
+}
+
+model IForestModel {
+  id           BigInt   @id @default(autoincrement())
+  version      String   @unique
+  features     String?
+  contamination Float
+  threshold    Float
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  @@map("iforest_models")
+}
+
+model RiskPrediction {
+  id            BigInt   @id @default(autoincrement())
+  studentId     BigInt
+  courseId      BigInt
+  score         Float
+  risk01        Float
+  alert         Boolean
+  modelVersion  String
+  threshold     Float
+  contamination Float
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  @@unique([studentId, courseId, modelVersion], name: "studentId_courseId_modelVersion")
+  @@map("risk_predictions")
+}
+
+model DropoutAlert {
+  id            BigInt   @id @default(autoincrement())
+  studentId     BigInt
+  courseId      BigInt
+  risk01        Float
+  alert         Boolean
+  modelVersion  String
+  threshold     Float
+  contamination Float
+  channel       String   @default("email")
+  message       String?
+  sentAt        DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  course        Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, courseId, createdAt])
+}
+
+model Notification {
+  id           BigInt                   @id @default(autoincrement())
+  title        String
+  message      String
+  level        String                   @db.VarChar(10)
+  data         Json?
+  created_by   String?                  @db.VarChar(50)
+  created_at   DateTime                 @default(now())
+  updated_at   DateTime                 @updatedAt
+  recipients   NotificationRecipient[]
+}
+
+model NotificationRecipient {
+  id             BigInt       @id @default(autoincrement())
+  notificationId BigInt
+  userId         Int
+  readAt         DateTime?
+  deletedAt      DateTime?
+  created_at     DateTime     @default(now())
+  updated_at     DateTime     @updatedAt
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id])
+  @@unique([notificationId, userId])
+  @@index([userId, readAt])
 }

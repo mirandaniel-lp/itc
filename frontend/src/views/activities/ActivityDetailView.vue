@@ -196,8 +196,8 @@
             <div class="mt-4 space-y-3 text-sm">
               <div class="flex items-center justify-between">
                 <span class="text-gray-400">Paralelo</span>
-                <span class="font-semibold">
-                  ({{ activity?.course?.parallel }})</span
+                <span class="font-semibold"
+                  >({{ activity?.course?.parallel }})</span
                 >
               </div>
               <div class="flex items-center justify-between">
@@ -242,7 +242,6 @@ import GradeService from "@/services/gradeService";
 import { useMessage } from "naive-ui";
 import * as pdfMake from "pdfmake/build/pdfmake";
 import * as pdfFonts from "pdfmake/build/vfs_fonts";
-
 pdfMake.vfs = pdfFonts.vfs;
 
 export default {
@@ -263,14 +262,14 @@ export default {
   },
   computed: {
     formattedDeadline() {
-      const d = this.activity?.deadline;
+      const d = this.activity?.due_date;
       if (!d) return "—";
       const date = new Date(d);
       return date.toLocaleString();
     },
     statusText() {
-      if (!this.activity?.deadline) return "Sin fecha";
-      return new Date(this.activity.deadline) > new Date()
+      if (!this.activity?.due_date) return "Sin fecha";
+      return new Date(this.activity.due_date) > new Date()
         ? "Abierta"
         : "Cerrada";
     },
@@ -289,7 +288,7 @@ export default {
     averageScore() {
       if (!this.grades.length) return 0;
       const total = this.grades.reduce((a, g) => a + (Number(g.score) || 0), 0);
-      return (total / this.grades.length).toFixed(2);
+      return Number((total / this.grades.length).toFixed(2));
     },
   },
   methods: {
@@ -334,8 +333,8 @@ export default {
       try {
         const activityId =
           this.$route.params.id || this.$route.query.activityId;
-        const res = await GradeService.getGradesByActivity(activityId);
-        this.grades = (res?.data?.grades || []).map((g) => ({
+        const list = await GradeService.getGradesByActivity(activityId);
+        this.grades = (list || []).map((g) => ({
           id: g.id,
           studentName: `${g.student?.name || ""} ${
             g.student?.last_name || ""
@@ -381,9 +380,7 @@ export default {
             },
           },
         ],
-        styles: {
-          header: { fontSize: 16, bold: true, margin: [0, 0, 0, 10] },
-        },
+        styles: { header: { fontSize: 16, bold: true, margin: [0, 0, 0, 10] } },
       };
       pdfMake.createPdf(doc).open();
     },

@@ -1,5 +1,4 @@
 import http from "./http";
-
 const API = "/courses";
 
 export default {
@@ -22,5 +21,13 @@ export default {
   async remove(id) {
     const { data } = await http.delete(`${API}/${id}`);
     return data.message ?? data;
+  },
+  async getCatalogs() {
+    const { data } = await http.get(`${API}/catalogs`);
+    return data;
+  },
+  async createBulkWithSchedules(payload) {
+    const { data } = await http.post(`${API}/bulk-with-schedules`, payload);
+    return data.courses ?? data;
   },
 };

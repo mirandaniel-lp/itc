@@ -6,6 +6,8 @@ import {
   updateCourse,
   deleteCourse,
   getEnrolledStudentsByCourse,
+  getCourseCatalogs,
+  createCoursesWithSchedules,
 } from "../controllers/courseController.js";
 import { authenticate } from "../middlewares/authMiddleware.js";
 
@@ -13,6 +15,8 @@ const router = Router();
 
 router.use(authenticate);
 router.get("/", listCourses);
+router.get("/catalogs", getCourseCatalogs);
+router.post("/bulk-with-schedules", createCoursesWithSchedules);
 router.get("/:id", getCourseById);
 router.get("/:courseId/students", getEnrolledStudentsByCourse);
 router.post("/", createCourse);

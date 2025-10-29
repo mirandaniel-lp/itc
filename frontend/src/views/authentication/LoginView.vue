@@ -37,7 +37,7 @@
           <n-button
             text
             @click="goToTeacherLogin"
-            class="text-[#3b82f6] font-extrabold hover:underline transition-colors duration-200"
+            class="text-[#3b82f6] font-extrabold hover:underline transition-colors duración-200"
           >
             Inicia Sesión
           </n-button>
@@ -57,11 +57,7 @@ import { useRouter } from "vue-router";
 
 export default {
   name: "LoginView",
-  components: {
-    AuthCard,
-    PrimaryButton,
-    TextInput,
-  },
+  components: { AuthCard, PrimaryButton, TextInput },
 
   setup() {
     const message = useMessage();
@@ -78,12 +74,28 @@ export default {
       },
       rules: {
         email: [
-          { required: true, message: "Por favor ingresa tu email" },
-          { type: "email", message: "Por favor ingresa un email válido" },
+          {
+            required: true,
+            message: "El correo es obligatorio.",
+            trigger: ["input", "blur"],
+          },
+          {
+            type: "email",
+            message: "Ingresa un correo válido.",
+            trigger: ["input", "blur"],
+          },
         ],
         password: [
-          { required: true, message: "Por favor ingresa tu contraseña" },
-          { min: 6, message: "La contraseña debe tener al menos 6 caracteres" },
+          {
+            required: true,
+            message: "La contraseña es obligatoria.",
+            trigger: ["input", "blur"],
+          },
+          {
+            min: 6,
+            message: "Mínimo 6 caracteres.",
+            trigger: ["input", "blur"],
+          },
         ],
       },
     };
@@ -91,24 +103,43 @@ export default {
 
   methods: {
     async handleLogin() {
+      if (this.isLoading) return;
+
+      const isValid = await this.$refs.formRef
+        ?.validate()
+        .then(() => true)
+        .catch(() => false);
+
+      if (!isValid) {
+        this.message.warning("Completa los campos requeridos.");
+        return;
+      }
+
       this.isLoading = true;
-      await new Promise((r) => setTimeout(r, 2000));
       try {
-        await this.$refs.formRef?.validate();
-        const { message: responseMessage, token } = await AuthService.login(
+        const { message: okMsg, token } = await AuthService.login(
           this.formData.email,
           this.formData.password
         );
-        if (token) {
-          this.message.success(responseMessage || "¡Bienvenido de nuevo!");
-          this.$router.push("/home");
-        } else {
-          throw new Error("No se recibió el token de autenticación");
-        }
-      } catch (error) {
-        this.message.error(
-          error.message || "Error al iniciar sesión. Intenta nuevamente."
-        );
+        if (!token) throw new Error("NO_TOKEN");
+        this.message.success(okMsg || "¡Bienvenido de nuevo!");
+        this.$router.push("/home");
+      } catch (err) {
+        const status = err?.response?.status;
+        const serverMsg =
+          err?.response?.data?.message || err?.response?.data?.error || "";
+
+        if (status === 401)
+          this.message.error(
+            "Credenciales incorrectas. Ingrese correo/contraseña."
+          );
+        else if (status === 403)
+          this.message.error(serverMsg || "Acceso denegado.");
+        else if (status === 422)
+          this.message.warning(serverMsg || "Datos inválidos.");
+        else if (!status || err?.code === "ERR_NETWORK")
+          this.message.error("No se pudo conectar con el servidor.");
+        else this.message.error(serverMsg || "Error al iniciar sesión.");
       } finally {
         this.isLoading = false;
       }

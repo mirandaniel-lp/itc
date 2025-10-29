@@ -34,47 +34,53 @@
           </div>
         </div>
 
+        <!-- Content -->
         <div
           class="rounded-2xl border border-[#334155] shadow-[0_6px_25px_rgba(0,0,0,0.4)] bg-[#0b1220]/70 backdrop-blur-sm p-6"
         >
+          <!-- Loading skeleton -->
           <div
             v-if="isLoading"
-            class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+            class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr"
           >
             <div
               v-for="i in 9"
               :key="i"
-              class="h-56 rounded-2xl bg-[#1e293b]/60 border border-[#334155] animate-pulse"
+              class="h-64 rounded-2xl bg-[#1e293b]/60 border border-[#334155] animate-pulse"
             />
           </div>
 
+          <!-- Cards -->
           <div
             v-else
-            class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+            class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr"
           >
             <div
               v-for="c in paginatedData"
               :key="c.id"
-              class="group rounded-2xl border border-[#334155] bg-[#0f172a]/80 hover:bg-[#0f172a] transition-all duration-300 shadow-[0_4px_18px_rgba(0,0,0,0.35)] overflow-hidden flex flex-col h-64"
+              class="group rounded-2xl border border-[#334155] bg-[#0f172a]/80 hover:bg-[#111a2e] transition-all duration-300 shadow-[0_4px_18px_rgba(0,0,0,0.35)] overflow-hidden h-full"
             >
-              <div class="p-5 flex flex-col h-full">
-                <div class="flex items-start justify-between">
-                  <div>
-                    <h2 class="text-xl font-extrabold leading-6">
+              <!-- Card body aligned with flex -->
+              <div class="p-5 flex flex-col h-full min-h-[280px]">
+                <!-- Título y chip -->
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <h2 class="text-xl font-extrabold leading-6 line-clamp-2">
                       {{ c.name }}
                       <span class="text-[#60a5fa]">({{ c.parallel }})</span>
                     </h2>
                     <p class="text-xs text-gray-400 mt-1">ID #{{ c.id }}</p>
                   </div>
                   <span
-                    class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#1d4ed8]/20 text-[#93c5fd] border border-[#1d4ed8]/40"
+                    class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#1d4ed8]/20 text-[#93c5fd] border border-[#1d4ed8]/40 shrink-0"
                   >
                     {{ c.modality?.name || "—" }}
                   </span>
                 </div>
 
+                <!-- Details -->
                 <div class="grid grid-cols-2 gap-3 text-sm mt-4">
-                  <div class="flex items-center gap-2 text-gray-300">
+                  <div class="flex items-center gap-2 text-gray-300 min-w-0">
                     <n-icon :component="PersonOutline" size="18" />
                     <span class="truncate">
                       {{
@@ -116,9 +122,10 @@
                   </div>
                 </div>
 
-                <div class="mt-auto flex justify-end gap-2">
+                <!-- Actions pinned to bottom -->
+                <div class="mt-auto pt-4 flex justify-end gap-2">
                   <button
-                    class="px-3 py-1.5 rounded-lg text-sm font-bold bg-gradient-to-r from-[#1e3a8a] to-[#2563eb] text-white hover:shadow-[0_0_15px_rgba(37,99,235,0.5)] transition-all"
+                    class="w-24 px-3 py-1.5 rounded-lg text-sm font-bold bg-gradient-to-r from-[#1e3a8a] to-[#2563eb] text-white hover:shadow-[0_0_15px_rgba(37,99,235,0.5)] transition-all"
                     @click="$router.push(`/courses/${c.id}/edit`)"
                   >
                     Editar
@@ -131,7 +138,7 @@
                   >
                     <template #trigger>
                       <button
-                        class="px-3 py-1.5 rounded-lg text-sm font-bold bg-gradient-to-r from-[#7f1d1d] to-[#dc2626] text-white hover:shadow-[0_0_15px_rgba(239,68,68,0.5)] transition-all"
+                        class="w-24 px-3 py-1.5 rounded-lg text-sm font-bold bg-gradient-to-r from-[#7f1d1d] to-[#dc2626] text-white hover:shadow-[0_0_15px_rgba(239,68,68,0.5)] transition-all"
                       >
                         Eliminar
                       </button>
@@ -150,6 +157,7 @@
             </div>
           </div>
 
+          <!-- Pagination -->
           <div class="flex justify-end mt-6">
             <n-pagination
               v-model:page="currentPage"
@@ -255,3 +263,14 @@ export default {
   },
 };
 </script>
+
+<style scoped>
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.auto-rows-fr {
+  grid-auto-rows: 1fr;
+}
+</style>

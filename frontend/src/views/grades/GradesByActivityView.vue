@@ -192,9 +192,10 @@ export default {
       const gradesRes = await GradeService.getGradesByActivity(
         this.selectedActivity
       );
-      const existingGrades = Array.isArray(gradesRes.data)
-        ? gradesRes.data
-        : gradesRes.data?.grades || [];
+      const existingGrades = Array.isArray(gradesRes)
+        ? gradesRes
+        : gradesRes?.grades || gradesRes?.data || [];
+
       this.grades = enrolledStudents.map((s) => {
         const found = existingGrades.find(
           (g) => Number(g.studentId) === Number(s.id)
@@ -203,7 +204,7 @@ export default {
           id: found?.id || null,
           studentId: Number(s.id),
           studentName: `${s.name} ${s.last_name || ""}`.trim(),
-          score: found?.score ? Number(found.score) : 0,
+          score: found?.score != null ? Number(found.score) : 0,
           feedback: found?.feedback || "",
         };
       });
@@ -227,7 +228,7 @@ export default {
         this.message.warning("Ingresa una nota primero.");
         return;
       }
-      this.grades.forEach((g) => (g.score = this.globalScore));
+      this.grades.forEach((g) => (g.score = Number(this.globalScore)));
       this.updateSummary();
       this.message.success("Nota aplicada a todos los estudiantes.");
     },
@@ -244,17 +245,15 @@ export default {
       this.saving = true;
       try {
         const promises = this.grades.map((g) => {
+          const score = Number(g.score ?? 0);
+          const payload = { score, feedback: g.feedback };
           if (g.id) {
-            return GradeService.updateGrade(g.id, {
-              score: g.score,
-              feedback: g.feedback,
-            });
+            return GradeService.updateGrade(g.id, payload);
           } else {
             return GradeService.createGrade({
               activityId: this.selectedActivity,
               studentId: g.studentId,
-              score: g.score,
-              feedback: g.feedback,
+              ...payload,
             });
           }
         });
@@ -262,7 +261,6 @@ export default {
         this.message.success("Notas guardadas correctamente.");
         await this.fetchStudentsAndGrades();
       } catch (err) {
-        console.error(err);
         this.message.error("Error al guardar notas.");
       } finally {
         this.saving = false;

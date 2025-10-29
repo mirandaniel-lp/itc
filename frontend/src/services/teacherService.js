@@ -23,4 +23,33 @@ export default {
     const { data } = await http.delete(`${API}/${id}`);
     return data.message ?? data;
   },
+  async login(payload) {
+    try {
+      const { data } = await http.post(`${API}/auth/login`, payload);
+      return data;
+    } catch (err) {
+      const { data } = await http.post(`${API}/login`, payload);
+      return data;
+    }
+  },
+  async getCourses(teacherId) {
+    const { data } = await http.get(`${API}/${teacherId}/courses`);
+    return data;
+  },
+  async getMyCourses() {
+    const { data } = await http.get(`${API}/me/courses`);
+    return data.courses ?? data;
+  },
+  async getMyActivities() {
+    const { data } = await http.get(`${API}/me/activities`);
+    return data.activities ?? data;
+  },
+  async getMyStudents() {
+    const { data } = await http.get(`${API}/me/students`);
+    return data.students ?? data;
+  },
+  async getMyGrades() {
+    const { data } = await http.get(`${API}/me/grades`);
+    return data.grades ?? data;
+  },
 };

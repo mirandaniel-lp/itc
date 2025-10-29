@@ -11,7 +11,7 @@
               v-model="search"
               @input="handleSearch"
               type="text"
-              placeholder="Buscar por título"
+              placeholder="Buscar"
               class="w-full h-12 bg-[#1e293b]/95 border border-[#334155] rounded-lg pl-4 pr-11 text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-all duration-300"
             />
           </div>

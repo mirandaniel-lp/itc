@@ -2,12 +2,10 @@
   <app-layout>
     <div class="min-h-screen p-8 bg-[#0f172a] text-white">
       <div class="max-w-6xl mx-auto space-y-8">
-        <!-- Header -->
         <div
           class="flex flex-col md:flex-row md:items-center md:justify-between gap-4"
         >
           <h1 class="text-4xl font-extrabold text-[#ffffff]">Inscripciones</h1>
-
           <div class="flex items-center gap-3 w-full md:w-auto">
             <div class="relative w-full md:w-80">
               <input
@@ -23,18 +21,16 @@
                 size="20"
               />
             </div>
-
             <n-button
               type="primary"
-              class="font-extrabold bg-gradient-to-r from-[#1e3a8a] to-[#2563eb] hover:shadow-[0_0_15px_rgba(37,99,235,0.5)]"
+              size="large"
+              class="rounded-lg font-extrabold"
               @click="$router.push('/enrollments/create')"
+              >+ Nuevo</n-button
             >
-              + Nueva
-            </n-button>
           </div>
         </div>
 
-        <!-- Tabla -->
         <div
           class="rounded-2xl overflow-hidden border border-[#334155] shadow-[0_6px_25px_rgba(0,0,0,0.4)] bg-[#1e293b]/80 backdrop-blur-sm"
         >
@@ -49,17 +45,59 @@
           />
         </div>
 
-        <!-- Paginación -->
         <div class="flex justify-end mt-6">
           <n-pagination
             v-model:page="currentPage"
             :page-size="itemsPerPage"
-            :item-count="filteredEnrollments.length"
+            :item-count="filtered.length"
             :show-quick-jumper="false"
             class="rounded-xl font-extrabold px-3 py-2 bg-[#1e293b] border border-[#3b82f6]/60 shadow-[0_0_20px_rgba(37,99,235,0.3)] text-white [&_.n-pagination-item]:bg-transparent [&_.n-pagination-item]:text-gray-200 [&_.n-pagination-item--active]:bg-[#2563eb] [&_.n-pagination-item--active]:text-white"
           />
         </div>
       </div>
+
+      <n-modal
+        v-model:show="showSchedule"
+        preset="card"
+        :style="{ width: '720px' }"
+        title="Horario del Estudiante"
+      >
+        <div v-if="scheduleLoading" class="text-gray-300">Cargando...</div>
+        <div v-else>
+          <table class="w-full text-sm">
+            <thead class="text-left text-gray-400">
+              <tr>
+                <th class="py-2">Curso</th>
+                <th class="py-2">Día</th>
+                <th class="py-2">Inicio</th>
+                <th class="py-2">Fin</th>
+                <th class="py-2">Aula</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="(r, i) in scheduleRows"
+                :key="i"
+                class="border-t border-white/10"
+              >
+                <td class="py-2">{{ r.courseName }}</td>
+                <td class="py-2">{{ r.weekday }}</td>
+                <td class="py-2">{{ r.start_time }}</td>
+                <td class="py-2">{{ r.end_time }}</td>
+                <td class="py-2">{{ r.classroom?.name || "-" }}</td>
+              </tr>
+            </tbody>
+          </table>
+          <div v-if="!scheduleRows.length" class="text-gray-400 mt-4">
+            Sin horario registrado.
+          </div>
+        </div>
+        <template #footer>
+          <div class="flex justify-end">
+            <n-button @click="showSchedule = false">Cerrar</n-button>
+          </div>
+        </template>
+      </n-modal>
     </div>
   </app-layout>
 </template>
@@ -71,10 +109,15 @@ import {
   NPagination,
   NPopconfirm,
   NButton,
+  NModal,
   useMessage,
 } from "naive-ui";
-
-import { TrashOutline, SearchOutline } from "@vicons/ionicons5";
+import {
+  TrashOutline,
+  SearchOutline,
+  CalendarOutline,
+  AddCircleOutline,
+} from "@vicons/ionicons5";
 import { h } from "vue";
 import AppLayout from "@/layouts/AppLayout.vue";
 import EnrollmentService from "@/services/enrollmentService";
@@ -87,17 +130,21 @@ export default {
     NPagination,
     NIcon,
     NButton,
+    NModal,
   },
   data() {
     return {
       SearchOutline,
       enrollments: [],
-      filteredEnrollments: [],
+      filtered: [],
       search: "",
       currentPage: 1,
       itemsPerPage: 8,
       isLoading: false,
       message: null,
+      showSchedule: false,
+      scheduleLoading: false,
+      scheduleRows: [],
       columns: [
         {
           title: "#",
@@ -111,91 +158,84 @@ export default {
           title: "Estudiante",
           key: "student",
           render: (row) =>
-            row.student
-              ? `${row.student.name} ${row.student.last_name ?? ""} ${
-                  row.student.second_last_name ?? ""
-                }`.trim()
-              : "-",
+            `${row.student.name} ${row.student.last_name ?? ""} ${
+              row.student.second_last_name ?? ""
+            }`.trim(),
         },
         {
-          title: "Curso",
-          key: "course",
+          title: "Cursos",
+          key: "courses",
           render: (row) =>
-            row.course
-              ? `${row.course.name} ${
-                  row.course.parallel ? `(${row.course.parallel})` : ""
-                }`.trim()
-              : "-",
-        },
-        {
-          title: "Docente",
-          key: "teacher",
-          render: (row) =>
-            row.course?.teacher
-              ? `${row.course.teacher.name} ${
-                  row.course.teacher.last_name ?? ""
-                }`.trim()
-              : "Sin docente",
-        },
-        {
-          title: "Modalidad",
-          key: "modality",
-          render: (row) => row.course?.modality?.name || "—",
-        },
-        {
-          title: "Tipo de Pago",
-          key: "payment_type",
-          render: (row) =>
-            row.payment_type
-              ? h(
-                  "span",
+            h(
+              "div",
+              { class: "flex flex-wrap gap-2 justify-center" },
+              row.courses.map((c) =>
+                h(
+                  "div",
                   {
                     class:
-                      "inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#1d4ed8]/20 text-[#93c5fd] border border-[#1d4ed8]/40",
+                      "inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#1d4ed8]/20 text-[#93c5fd] border border-[#1d4ed8]/40",
                   },
-                  row.payment_type
+                  [
+                    `${c.course.name}${
+                      c.course.parallel ? ` (${c.course.parallel})` : ""
+                    }`,
+                    h(
+                      NPopconfirm,
+                      {
+                        "onPositive-click": () =>
+                          this.removeEnrollment(c.enrollmentId),
+                        "positive-text": "Sí",
+                        "negative-text": "No",
+                      },
+                      {
+                        trigger: () =>
+                          h(
+                            "button",
+                            { class: "ml-1 text-rose-300 hover:text-rose-400" },
+                            [h(NIcon, null, { default: () => h(TrashOutline) })]
+                          ),
+                        default: () => "¿Eliminar esta inscripción?",
+                      }
+                    ),
+                  ]
                 )
-              : "—",
-        },
-        {
-          title: "Fecha",
-          key: "enrollment_date",
-          render: (row) =>
-            row.enrollment_date
-              ? new Date(row.enrollment_date).toLocaleDateString("es-BO", {
-                  day: "2-digit",
-                  month: "2-digit",
-                  year: "numeric",
-                })
-              : "-",
+              )
+            ),
         },
         {
           title: "Acciones",
           key: "actions",
           render: (row) =>
-            h(
-              NPopconfirm,
-              {
-                "onPositive-click": () => this.handleDelete(row.id),
-                "positive-text": "Sí",
-                "negative-text": "No",
-              },
-              {
-                trigger: () =>
-                  h(
-                    "button",
-                    {
-                      class:
-                        "px-3 py-1.5 rounded-lg text-sm font-bold bg-gradient-to-r from-[#7f1d1d] to-[#dc2626] text-white hover:shadow-[0_0_15px_rgba(239,68,68,0.5)] transition-all",
-                    },
-                    [
-                      h(NIcon, null, { default: () => h(TrashOutline) }),
-                      " Eliminar",
-                    ]
-                  ),
-                default: () => "¿Eliminar esta inscripción?",
-              }
-            ),
+            h("div", { class: "flex gap-2 justify-center" }, [
+              h(
+                "button",
+                {
+                  class:
+                    "px-3 py-1.5 rounded-lg text-sm font-bold bg-gradient-to-r from-[#1e3a8a] to-[#2563eb] text-white hover:shadow-[0_0_15px_rgba(37,99,235,0.5)] transition-all",
+                  onClick: () => this.openSchedule(row.student.id),
+                },
+                [
+                  h(NIcon, null, { default: () => h(CalendarOutline) }),
+                  " Ver horario",
+                ]
+              ),
+              h(
+                "button",
+                {
+                  class:
+                    "px-3 py-1.5 rounded-lg text-sm font-bold bg-[#1e293b] border border-[#334155] text-gray-300 hover:bg-[#334155] transition-all",
+                  onClick: () =>
+                    this.$router.push(
+                      `/enrollments/create?studentId=${row.student.id}`
+                    ),
+                },
+                [
+                  h(NIcon, null, { default: () => h(AddCircleOutline) }),
+                  " Añadir cursos",
+                ]
+              ),
+            ]),
         },
       ],
     };
@@ -203,16 +243,16 @@ export default {
   computed: {
     paginatedData() {
       const start = (this.currentPage - 1) * this.itemsPerPage;
-      return this.filteredEnrollments.slice(start, start + this.itemsPerPage);
+      return this.filtered.slice(start, start + this.itemsPerPage);
     },
   },
   methods: {
-    async fetchEnrollments() {
+    async fetchSummary() {
       this.isLoading = true;
       try {
-        const data = await EnrollmentService.getAll();
+        const data = await EnrollmentService.getSummary();
         this.enrollments = data;
-        this.filteredEnrollments = [...data];
+        this.filtered = [...data];
       } catch {
         this.message?.error?.("Error al cargar inscripciones.");
       } finally {
@@ -221,34 +261,47 @@ export default {
     },
     handleSearch() {
       const q = this.search.toLowerCase().trim();
-      this.filteredEnrollments = this.enrollments.filter((e) => {
-        const fullName = `${e.student?.name ?? ""} ${
-          e.student?.last_name ?? ""
-        } ${e.student?.second_last_name ?? ""}`
+      this.filtered = this.enrollments.filter((e) => {
+        const full = `${e.student.name} ${e.student.last_name ?? ""} ${
+          e.student.second_last_name ?? ""
+        }`
           .trim()
           .toLowerCase();
-        const courseName = `${e.course?.name ?? ""} ${e.course?.parallel ?? ""}`
-          .trim()
-          .toLowerCase();
-        return fullName.includes(q) || courseName.includes(q);
+        const anyCourse = e.courses.some((c) =>
+          `${c.course.name} ${c.course.parallel ?? ""}`
+            .toLowerCase()
+            .includes(q)
+        );
+        return full.includes(q) || anyCourse;
       });
       this.currentPage = 1;
     },
-    async handleDelete(id) {
+    async removeEnrollment(id) {
       try {
         await EnrollmentService.remove(id);
         this.message?.success?.("Inscripción eliminada.");
-        await this.fetchEnrollments();
+        await this.fetchSummary();
       } catch {
         this.message?.error?.("Error al eliminar inscripción.");
+      }
+    },
+    async openSchedule(studentId) {
+      this.showSchedule = true;
+      this.scheduleLoading = true;
+      try {
+        this.scheduleRows = await EnrollmentService.getStudentSchedule(
+          studentId
+        );
+      } catch {
+        this.scheduleRows = [];
+      } finally {
+        this.scheduleLoading = false;
       }
     },
   },
   created() {
     this.message = useMessage();
-    this.fetchEnrollments();
+    this.fetchSummary();
   },
 };
 </script>
-
-<style></style>

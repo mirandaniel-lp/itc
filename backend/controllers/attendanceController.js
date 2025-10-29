@@ -4,7 +4,18 @@ import { serialize } from "../utils/serializer.js";
 const prisma = new PrismaClient();
 
 function normalizeToDateOnly(input) {
-  const d = new Date(input);
+  if (input instanceof Date) {
+    const d = new Date(input);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+  const s = String(input);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const [y, m, d] = s.split("-").map(Number);
+    return new Date(y, m - 1, d, 0, 0, 0, 0);
+  }
+  const n = Number(s);
+  const d = Number.isFinite(n) ? new Date(n) : new Date(s);
   if (Number.isNaN(d.getTime())) throw new Error("Fecha inválida");
   d.setHours(0, 0, 0, 0);
   return d;

@@ -9,22 +9,31 @@
             Lista de Estudiantes
           </h1>
 
-          <div class="relative w-full md:w-80">
-            <input
-              v-model="search"
-              @input="handleSearch"
-              type="text"
-              placeholder="Buscar"
-              class="w-full h-12 bg-[#1e293b]/95 border border-[#334155] rounded-lg pl-4 pr-11 text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-all duration-300"
-            />
-            <n-icon
-              :component="SearchOutline"
-              class="absolute right-3 top-[14px] text-[#60a5fa]"
-              size="20"
-            />
+          <div class="flex items-center gap-3 w-full md:w-auto">
+            <div class="relative w-full md:w-80">
+              <input
+                v-model="search"
+                @input="handleSearch"
+                type="text"
+                placeholder="Buscar"
+                class="w-full h-12 bg-[#1e293b]/95 border border-[#334155] rounded-lg pl-4 pr-11 text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-all duration-300"
+              />
+              <n-icon
+                :component="SearchOutline"
+                class="absolute right-3 top-[14px] text-[#60a5fa]"
+                size="20"
+              />
+            </div>
+            <n-button
+              type="primary"
+              size="large"
+              class="rounded-lg font-extrabold"
+              @click="$router.push('/students/create')"
+            >
+              + Nuevo
+            </n-button>
           </div>
         </div>
-
         <div
           class="rounded-2xl overflow-hidden border border-[#334155] shadow-[0_6px_25px_rgba(0,0,0,0.4)] bg-[#1e293b]/80 backdrop-blur-sm"
         >
@@ -88,7 +97,7 @@ export default {
       filteredStudents: [],
       search: "",
       currentPage: 1,
-      itemsPerPage: 8,
+      itemsPerPage: 10,
       isLoading: false,
       message: null,
       columns: [

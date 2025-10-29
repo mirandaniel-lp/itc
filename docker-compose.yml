@@ -1,0 +1,35 @@
+version: "3.9"
+
+services:
+  api:
+    build: ./api
+    environment:
+      - NODE_ENV=production
+      - IFOREST_URL=http://iforest:8021
+    depends_on:
+      - iforest
+    networks: [backend]
+
+  iforest:
+    build: ./iforest
+    container_name: iforest
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./iforest:/app
+      - ./models:/models
+    ports:
+      - "8021:8021"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8021/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks: [backend]
+    restart: unless-stopped
+
+networks:
+  backend:
+
+volumes:
+  pgdata:

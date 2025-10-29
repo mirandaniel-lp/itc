@@ -6,7 +6,7 @@ export const listGrades = async (req, res) => {
   try {
     const grades = await prisma.grade.findMany({
       where: { status: true },
-      orderBy: { id: "asc" },
+      orderBy: { id: "desc" },
       include: { student: true, activity: true },
     });
     res.json({ grades: serialize(grades) });
@@ -21,7 +21,7 @@ export const listGradesByActivity = async (req, res) => {
   try {
     const grades = await prisma.grade.findMany({
       where: { activityId: BigInt(activityId), status: true },
-      orderBy: { id: "asc" },
+      orderBy: { id: "desc" },
       include: { student: true },
     });
     res.json({ grades: serialize(grades) });

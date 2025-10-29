@@ -94,21 +94,26 @@
           </n-breadcrumb>
         </div>
 
-        <n-dropdown
-          :options="userOptions"
-          @select="onUserSelect"
-          trigger="click"
-        >
-          <div
-            class="cursor-pointer px-2 py-1 flex items-center gap-2 hover:bg-[#334155] rounded transition"
+        <div class="flex items-center gap-2">
+          <NotificationBell />
+          <n-dropdown
+            :options="userOptions"
+            @select="onUserSelect"
+            trigger="click"
           >
-            <n-icon size="20"><PersonCircleOutline /></n-icon>
-            <span class="text-sm font-extrabold hidden sm:inline text-gray-300">
-              {{ loadingUser ? "Cargando..." : user?.email || "Usuario" }}
-            </span>
-            <n-icon size="16" class="text-gray-400"><ChevronDown /></n-icon>
-          </div>
-        </n-dropdown>
+            <div
+              class="cursor-pointer px-2 py-1 flex items-center gap-2 hover:bg-[#334155] rounded transition"
+            >
+              <n-icon size="20"><PersonCircleOutline /></n-icon>
+              <span
+                class="text-sm font-extrabold hidden sm:inline text-gray-300"
+              >
+                {{ loadingUser ? "Cargando..." : user?.email || "Usuario" }}
+              </span>
+              <n-icon size="16" class="text-gray-400"><ChevronDown /></n-icon>
+            </div>
+          </n-dropdown>
+        </div>
       </n-layout-header>
 
       <n-layout-content
@@ -138,6 +143,7 @@ import {
 import { useRouter, useRoute } from "vue-router";
 import { ref, computed, onMounted, watch, h } from "vue";
 import AuthService from "@/services/authService";
+import NotificationBell from "@/components/NotificationBell.vue";
 import {
   Menu as MenuIcon,
   HomeOutline,
@@ -149,6 +155,9 @@ import {
   BookOutline,
   CashOutline,
   PieChartOutline,
+  CalendarOutline,
+  LayersOutline,
+  AnalyticsOutline,
 } from "@vicons/ionicons5";
 
 export default {
@@ -168,6 +177,7 @@ export default {
     MenuIcon,
     PersonCircleOutline,
     ChevronDown,
+    NotificationBell,
   },
   setup() {
     const router = useRouter();
@@ -199,92 +209,146 @@ export default {
       localStorage.setItem("sidebar_collapsed", v ? "1" : "0");
     });
 
+    const itemHome = {
+      label: "Inicio",
+      key: "/home",
+      icon: renderIcon(HomeOutline),
+    };
+    const itemUsers = {
+      label: "Usuarios",
+      key: "/users",
+      icon: renderIcon(PeopleOutline),
+    };
+    const itemStudents = {
+      label: "Estudiantes",
+      key: "/students",
+      icon: renderIcon(SchoolOutline),
+      children: [
+        { label: "Lista de Estudiantes", key: "/students" },
+        { label: "Registrar Estudiante", key: "/students/create" },
+      ],
+    };
+    const itemTeachers = {
+      label: "Docentes",
+      key: "/teachers",
+      icon: renderIcon(PeopleOutline),
+      children: [
+        { label: "Lista de Docentes", key: "/teachers" },
+        { label: "Registrar Docente", key: "/teachers/create" },
+      ],
+    };
+    const itemCourses = {
+      label: "Cursos",
+      key: "/courses",
+      icon: renderIcon(BookOutline),
+      children: [
+        { label: "Lista de Cursos", key: "/courses" },
+        { label: "Registrar Cursos", key: "/courses/create" },
+      ],
+    };
+    const itemEnrollments = {
+      label: "Inscripciones",
+      key: "/enrollments",
+      icon: renderIcon(CashOutline),
+      children: [
+        { label: "Lista de Inscripciones", key: "/enrollments" },
+        { label: "Nueva Inscripción", key: "/enrollments/create" },
+      ],
+    };
+    const itemCatalogs = {
+      label: "Catálogos",
+      key: "catalogs",
+      icon: renderIcon(LayersOutline),
+      children: [
+        { label: "Programas", key: "/programs" },
+        { label: "Periodos Académicos", key: "/terms" },
+        { label: "Aulas", key: "/classrooms" },
+        { label: "Políticas de Calificaciones", key: "/grade-policies" },
+        { label: "Feriados Académicos", key: "/holidays" },
+      ],
+    };
+    const itemActivities = {
+      label: "Actividades",
+      key: "/activities",
+      icon: renderIcon(BookOutline),
+    };
+    const itemGrades = {
+      label: "Calificaciones",
+      key: "/grades",
+      icon: renderIcon(SchoolOutline),
+    };
+    const itemAttendances = {
+      label: "Asistencias",
+      key: "/attendances",
+      icon: renderIcon(SchoolOutline),
+    };
+    const itemSchedules = {
+      label: "Horarios",
+      key: "/schedules/designer",
+      icon: renderIcon(CalendarOutline),
+    };
+    const itemReports = {
+      label: "Reportes",
+      key: "/reports",
+      icon: renderIcon(PieChartOutline),
+    };
+    const itemRisks = {
+      label: "Riesgos",
+      key: "/risks",
+      icon: renderIcon(AnalyticsOutline),
+    };
+
     const menuOptions = computed(() => {
-      const role = user.value?.role?.name;
-
-      const base = [
-        { label: "Inicio", key: "/home", icon: renderIcon(HomeOutline) },
-        { label: "Usuarios", key: "/users", icon: renderIcon(PeopleOutline) },
-        {
-          label: "Estudiantes",
-          key: "/students",
-          icon: renderIcon(SchoolOutline),
-          children: [
-            { label: "Lista de Estudiantes", key: "/students" },
-            { label: "Registrar Estudiante", key: "/students/create" },
-          ],
-        },
-        {
-          label: "Docentes",
-          key: "/teachers",
-          icon: renderIcon(PeopleOutline),
-          children: [
-            { label: "Lista de Docentes", key: "/teachers" },
-            { label: "Registrar Docente", key: "/teachers/create" },
-          ],
-        },
-        {
-          label: "Cursos",
-          key: "/courses",
-          icon: renderIcon(BookOutline),
-          children: [
-            { label: "Lista de Cursos", key: "/courses" },
-            { label: "Registrar Curso", key: "/courses/create" },
-          ],
-        },
-        {
-          label: "Inscripciones",
-          key: "/enrollments",
-          icon: renderIcon(CashOutline),
-          children: [
-            { label: "Lista de Inscripciones", key: "/enrollments" },
-            { label: "Nueva Inscripción", key: "/enrollments/create" },
-          ],
-        },
-        {
-          label: "Actividades",
-          key: "/activities",
-          icon: renderIcon(BookOutline),
-        },
-        {
-          label: "Calificaciones",
-          key: "/grades",
-          icon: renderIcon(SchoolOutline),
-        },
-        {
-          label: "Asistencias",
-          key: "/attendances",
-          icon: renderIcon(SchoolOutline),
-        },
-        {
-          label: "Reportes",
-          key: "/reports",
-          icon: renderIcon(PieChartOutline),
-        },
-      ];
-
-      if (role === "ADMINISTRADOR") return base;
-
-      if (role === "GERENTE") {
-        return base.filter(
-          (item) => !String(item.key).startsWith("/enrollments")
-        );
-      }
-
-      if (role === "SECRETARÍA") {
-        return base.filter(
-          (item) =>
-            String(item.key).startsWith("/students") ||
-            String(item.key).startsWith("/enrollments") ||
-            String(item.key) === "/home"
-        );
-      }
-
-      if (role === "USUARIO") {
-        return base.filter((item) => String(item.key) === "/home");
-      }
-
-      return base.filter((item) => String(item.key) === "/home");
+      const raw = (user.value?.role?.name || "").toUpperCase();
+      const role = raw.startsWith("ADMIN")
+        ? "ADMINISTRADOR"
+        : raw.includes("GERENTE")
+        ? "GERENTE"
+        : raw.includes("SECRETARIA")
+        ? "SECRETARÍA"
+        : raw.includes("USUARIO")
+        ? "USUARIO"
+        : raw;
+      if (role === "ADMINISTRADOR")
+        return [
+          itemHome,
+          itemUsers,
+          itemStudents,
+          itemTeachers,
+          itemCourses,
+          itemEnrollments,
+          itemCatalogs,
+          itemActivities,
+          itemGrades,
+          itemAttendances,
+          itemSchedules,
+          itemRisks,
+          itemReports,
+        ];
+      if (role === "GERENTE")
+        return [
+          itemHome,
+          itemStudents,
+          itemCourses,
+          itemEnrollments,
+          itemCatalogs,
+          itemActivities,
+          itemGrades,
+          itemAttendances,
+          itemSchedules,
+          itemRisks,
+          itemReports,
+        ];
+      if (role === "SECRETARÍA")
+        return [
+          itemHome,
+          itemStudents,
+          itemEnrollments,
+          itemAttendances,
+          itemGrades,
+        ];
+      if (role === "USUARIO") return [itemHome];
+      return [itemHome];
     });
 
     const currentMenuKey = computed(() => route.path);
@@ -304,11 +368,18 @@ export default {
       enrollments: "Inscripciones",
       activities: "Actividades",
       reports: "Reportes",
+      risks: "Riesgos de Deserción",
       grades: "Calificaciones",
       attendances: "Asistencias",
+      schedules: "Horarios",
+      designer: "Diseño",
       create: "Registrar",
       edit: "Editar",
-      "by-activity": "Gestión de Calificaciones",
+      programs: "Programas",
+      terms: "Periodos Académicos",
+      classrooms: "Aulas",
+      "grade-policies": "Políticas de Calificaciones",
+      holidays: "Feriados Académicos",
     };
 
     const breadcrumbs = computed(() => {
@@ -346,9 +417,7 @@ export default {
       if (key === "logout") {
         try {
           await AuthService.logout();
-        } catch (e) {
-          console.warn("Error al cerrar sesión:", e);
-        }
+        } catch {}
         localStorage.removeItem("token");
         router.push("/login");
       }

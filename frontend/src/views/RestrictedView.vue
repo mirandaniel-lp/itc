@@ -11,8 +11,13 @@
       </div>
       <router-link
         to="/home"
-        class="inline-block px-5 py-2 rounded-lg bg-gradient-to-r from-[#1e3a8a] to-[#2563eb] font-bold"
+        class="inline-block px-5 py-2 me-4 rounded-lg bg-gradient-to-r from-[#1e3a8a] to-[#2563eb] font-bold"
         >Ir al inicio</router-link
+      >
+      <router-link
+        to="/"
+        class="inline-block px-5 py-2 rounded-lg bg-gradient-to-r from-[#1e3a8a] to-[#2563eb] font-bold"
+        >Volver a Iniciar Sesión</router-link
       >
     </div>
   </div>

@@ -1,6 +1,5 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 import { serialize } from "../utils/serializer.js";
 import { sendTeacherCredentials } from "../utils/mailer.js";
 
@@ -11,7 +10,7 @@ export const listTeachers = async (req, res) => {
   try {
     const teachers = await prisma.teacher.findMany({
       where: { status: true },
-      orderBy: { id: "asc" },
+      orderBy: { id: "desc" },
     });
     res.json({ teachers: serialize(teachers) });
   } catch {
@@ -36,7 +35,6 @@ export const createTeacher = async (req, res) => {
   try {
     const pin = generatePin();
     const hashedPassword = await bcrypt.hash(pin, 10);
-
     const teacher = await prisma.teacher.create({
       data: {
         name: req.body.name,
@@ -55,7 +53,6 @@ export const createTeacher = async (req, res) => {
         status: true,
       },
     });
-
     res.status(201).json({ teacher: serialize(teacher), pin });
     if (req.body.email) {
       Promise.resolve(
@@ -65,9 +62,9 @@ export const createTeacher = async (req, res) => {
           ci: req.body.ci,
           pin,
         })
-      ).catch((err) => console.error("Mailer error:", err));
+      ).catch(() => {});
     }
-  } catch (e) {
+  } catch {
     res.status(400).json({ error: "Error al crear docente." });
   }
 };
@@ -106,47 +103,6 @@ export const deleteTeacher = async (req, res) => {
     res.json({ message: "Docente eliminado correctamente." });
   } catch {
     res.status(400).json({ error: "Error al eliminar docente." });
-  }
-};
-
-export const loginTeacher = async (req, res) => {
-  const { ci, password } = req.body;
-  try {
-    const teacher = await prisma.teacher.findUnique({ where: { ci } });
-    if (!teacher || !teacher.status)
-      return res.status(401).json({ error: "CI o contraseña incorrectos." });
-
-    const valid = await bcrypt.compare(password, teacher.password);
-    if (!valid)
-      return res.status(401).json({ error: "CI o contraseña incorrectos." });
-
-    const token = jwt.sign(
-      {
-        id: teacher.id.toString(),
-        ci: teacher.ci,
-        role: "TEACHER",
-        name: teacher.name,
-        last_name: teacher.last_name,
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: "1d" }
-    );
-
-    res.json({
-      message: "Inicio de sesión exitoso.",
-      token,
-      teacher: serialize(teacher),
-    });
-  } catch {
-    res.status(500).json({ error: "Error al iniciar sesión docente." });
-  }
-};
-
-export const logoutTeacher = async (req, res) => {
-  try {
-    res.json({ message: "Sesión cerrada exitosamente." });
-  } catch {
-    res.status(500).json({ error: "Error al cerrar sesión." });
   }
 };
 

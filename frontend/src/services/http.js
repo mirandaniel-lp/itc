@@ -1,6 +1,7 @@
 import axios from "axios";
+import cfg from "../config";
 
-const baseURL = process.env.VUE_APP_API_BASE_URL;
+const baseURL = cfg.API_BASE_URL;
 
 const http = axios.create({
   baseURL,

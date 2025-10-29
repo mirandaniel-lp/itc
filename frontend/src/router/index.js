@@ -11,9 +11,31 @@ function publicPaths() {
 function isAllowed(roleName, path) {
   if (!roleName) return false;
   if (roleName === ROLES.ADMINISTRADOR) return true;
-  if (roleName === ROLES.GERENTE) return !path.startsWith("/enrollments");
+  if (roleName === ROLES.GERENTE)
+    return (
+      path === "/home" ||
+      path.startsWith("/students") ||
+      path.startsWith("/enrollments") ||
+      path.startsWith("/courses") ||
+      path.startsWith("/programs") ||
+      path.startsWith("/terms") ||
+      path.startsWith("/classrooms") ||
+      path.startsWith("/grade-policies") ||
+      path.startsWith("/holidays") ||
+      path.startsWith("/activities") ||
+      path.startsWith("/attendances") ||
+      path.startsWith("/schedules") ||
+      path.startsWith("/risks") ||
+      path.startsWith("/grades")
+    );
   if (roleName === ROLES.SECRETARIA)
-    return path.startsWith("/students") || path.startsWith("/enrollments");
+    return (
+      path === "/home" ||
+      path.startsWith("/students") ||
+      path.startsWith("/enrollments") ||
+      path.startsWith("/attendances") ||
+      path.startsWith("/grades")
+    );
   if (roleName === ROLES.USUARIO) return path === "/home";
   return false;
 }
@@ -64,7 +86,6 @@ const routes = [
     component: () => import("@/views/students/EditStudentView.vue"),
     props: true,
   },
-
   {
     path: "/teachers",
     name: "teachers",
@@ -81,16 +102,20 @@ const routes = [
     component: () => import("@/views/teachers/EditTeacherView.vue"),
     props: true,
   },
-
+  {
+    path: "/terms",
+    name: "TermsList",
+    component: () => import("@/views/terms/TermsListView.vue"),
+  },
+  {
+    path: "/programs",
+    name: "ProgramsList",
+    component: () => import("@/views/programs/ProgramsListView.vue"),
+  },
   {
     path: "/courses",
     name: "courses",
     component: () => import("@/views/courses/ListCoursesView.vue"),
-  },
-  {
-    path: "/courses/create",
-    name: "create-course",
-    component: () => import("@/views/courses/CreateCourseView.vue"),
   },
   {
     path: "/courses/:id/edit",
@@ -98,7 +123,27 @@ const routes = [
     component: () => import("@/views/courses/EditCourseView.vue"),
     props: true,
   },
-
+  {
+    path: "/courses/create",
+    name: "CoursesDesigner",
+    component: () =>
+      import("@/views/courses/CreateCoursesWithSchedulesView.vue"),
+  },
+  {
+    path: "/classrooms",
+    name: "classrooms",
+    component: () => import("@/views/classrooms/ClassroomsView.vue"),
+  },
+  {
+    path: "/grade-policies",
+    name: "grade-policies",
+    component: () => import("@/views/gradePolicies/GradePoliciesView.vue"),
+  },
+  {
+    path: "/holidays",
+    name: "holidays",
+    component: () => import("@/views/holidays/HolidaysView.vue"),
+  },
   {
     path: "/enrollments",
     name: "enrollments",
@@ -109,7 +154,6 @@ const routes = [
     name: "create-enrollment",
     component: () => import("@/views/enrollments/CreateEnrollmentView.vue"),
   },
-
   {
     path: "/activities",
     name: "activities",
@@ -125,7 +169,6 @@ const routes = [
     name: "ActivityDetail",
     component: () => import("@/views/activities/ActivityDetailView.vue"),
   },
-
   {
     path: "/grades",
     name: "grades",
@@ -137,17 +180,67 @@ const routes = [
     component: () => import("@/views/attendances/AttendancesView.vue"),
   },
   {
+    path: "/risks",
+    name: "risks",
+    component: () => import("@/views/risks/RiskAnalysisView.vue"),
+  },
+  {
     path: "/reports",
     name: "reports",
     component: () => import("@/views/reports/ReportsView.vue"),
   },
-
+  {
+    path: "/schedules/designer",
+    name: "schedules-designer",
+    component: () => import("@/views/schedules/ScheduleDesignerView.vue"),
+  },
   {
     path: "/teacher/login",
     name: "teacher-login",
     component: () => import("@/views/authentication/TeacherLoginView.vue"),
   },
-
+  {
+    path: "/teacher",
+    component: () => import("@/layouts/TeacherLayout.vue"),
+    children: [
+      { path: "", redirect: "/teacher/dashboard" },
+      {
+        path: "dashboard",
+        name: "teacher-dashboard",
+        component: () => import("@/views/teacher/TeacherDashboardView.vue"),
+      },
+      {
+        path: "courses",
+        name: "teacher-courses",
+        component: () => import("@/views/teacher/TeacherCoursesView.vue"),
+      },
+      {
+        path: "activities",
+        name: "teacher-activities",
+        component: () => import("@/views/teacher/TeacherActivitiesView.vue"),
+      },
+      {
+        path: "students",
+        name: "teacher-students",
+        component: () => import("@/views/teacher/TeacherStudentsView.vue"),
+      },
+      {
+        path: "grades",
+        name: "teacher-grades",
+        component: () => import("@/views/teacher/TeacherGradesView.vue"),
+      },
+      {
+        path: "attendances",
+        name: "teacher-attendances",
+        component: () => import("@/views/teacher/TeacherAttendancesView.vue"),
+      },
+      {
+        path: "profile",
+        name: "teacher-profile",
+        component: () => import("@/views/teacher/TeacherProfileView.vue"),
+      },
+    ],
+  },
   {
     path: "/restricted",
     name: "restricted",
@@ -161,10 +254,29 @@ const router = createRouter({
 });
 
 router.beforeEach(async (to, from, next) => {
+  if (to.path === "/teacher/login") {
+    const t = localStorage.getItem("token");
+    const s = localStorage.getItem("sessionType");
+    if (t && s === "TEACHER") return next("/teacher/dashboard");
+    return next();
+  }
+
   if (publicPaths().includes(to.path)) return next();
 
   const token = localStorage.getItem("token");
-  if (!token) return next("/login");
+  const sessionType = localStorage.getItem("sessionType");
+
+  if (!token) {
+    cachedUser = null;
+    if (to.path.startsWith("/teacher")) return next("/teacher/login");
+    return next("/login");
+  }
+
+  if (sessionType === "TEACHER") {
+    if (to.path.startsWith("/teacher") || to.path === "/restricted")
+      return next();
+    return next("/restricted");
+  }
 
   try {
     if (!cachedUser) {
@@ -173,11 +285,16 @@ router.beforeEach(async (to, from, next) => {
     }
   } catch {
     localStorage.removeItem("token");
+    cachedUser = null;
     return next("/login");
   }
 
   const roleName = cachedUser?.role?.name || "";
-  if (!isAllowed(roleName, to.path)) return next("/restricted");
+  if (!isAllowed(roleName, to.path)) {
+    if (to.path !== "/restricted") return next("/restricted");
+    return next();
+  }
+
   return next();
 });
 

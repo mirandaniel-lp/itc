@@ -25,18 +25,26 @@
         class="my-5"
       />
 
-      <PrimaryButton :loading="isLoading" @click="handleRegister" class="mt-3">
+      <PrimaryButton
+        :loading="isLoading"
+        @click="handleRegister"
+        class="mt-3"
+        :disabled="isLoading"
+      >
         Registrar
       </PrimaryButton>
 
       <div class="text-center mt-5 space-y-2">
-        <n-button
-          text
-          @click="goToLogin"
-          class="text-[#3b82f6] hover:underline"
-        >
-          ¿Ya tienes cuenta? Inicia sesión
-        </n-button>
+        <p class="text-white font-extrabold">
+          ¿Ya registrado?
+          <n-button
+            text
+            @click="goToLogin"
+            class="text-[#3b82f6] font-extrabold hover:underline transition-colors duration-200"
+          >
+            Iniciar Sesión
+          </n-button>
+        </p>
       </div>
     </n-form>
   </auth-card>
@@ -52,11 +60,7 @@ import { useRouter } from "vue-router";
 
 export default {
   name: "RegisterView",
-  components: {
-    AuthCard,
-    PrimaryButton,
-    TextInput,
-  },
+  components: { AuthCard, PrimaryButton, TextInput },
 
   setup() {
     const message = useMessage();
@@ -74,18 +78,34 @@ export default {
       },
       rules: {
         email: [
-          { required: true, message: "Por favor ingresa tu email" },
-          { type: "email", message: "Por favor ingresa un email válido" },
+          {
+            required: true,
+            message: "El correo es obligatorio.",
+            trigger: ["input", "blur"],
+          },
+          {
+            type: "email",
+            message: "Ingresa un correo válido.",
+            trigger: ["input", "blur"],
+          },
         ],
         password: [
-          { required: true, message: "Por favor ingresa tu contraseña" },
-          { min: 6, message: "La contraseña debe tener al menos 6 caracteres" },
+          {
+            required: true,
+            message: "La contraseña es obligatoria.",
+            trigger: ["input", "blur"],
+          },
+          {
+            min: 6,
+            message: "Mínimo 6 caracteres.",
+            trigger: ["input", "blur"],
+          },
         ],
         confirmPassword: [
-          { required: true, message: "Por favor confirma tu contraseña" },
           {
-            validator: (rule, value) => value === this.formData.password,
-            message: "Las contraseñas no coinciden",
+            required: true,
+            message: "Confirma tu contraseña.",
+            trigger: ["input", "blur"],
           },
         ],
       },
@@ -94,32 +114,42 @@ export default {
 
   methods: {
     async handleRegister() {
+      if (this.isLoading) return;
+
+      const { email, password, confirmPassword } = this.formData;
+      const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+      if (!email || !password || !confirmPassword) {
+        this.message.warning("Completa los campos requeridos.");
+        return;
+      }
+      if (!emailOk) {
+        this.message.warning("Ingresa un correo válido.");
+        return;
+      }
+      if (password.length < 6) {
+        this.message.warning("La contraseña debe tener al menos 6 caracteres.");
+        return;
+      }
+      if (password !== confirmPassword) {
+        this.message.warning("Las contraseñas no coinciden.");
+        return;
+      }
+
       this.isLoading = true;
-      await new Promise((r) => setTimeout(r, 2000));
       try {
-        await this.$refs.formRef?.validate();
-        const userData = {
-          email: this.formData.email,
-          password: this.formData.password,
-          roleId: 2,
-        };
-        const { message: responseMessage, user } = await AuthService.register(
-          userData
-        );
-        if (user) {
-          this.message.success(
-            responseMessage || "¡Registro exitoso! Por favor inicia sesión."
-          );
-          this.$router.push("/login");
-        } else {
-          throw new Error("Error al crear el usuario");
-        }
-      } catch (error) {
-        this.message.error(
-          error.response?.data?.error ||
-            error.message ||
-            "Error al registrar. Intenta nuevamente."
-        );
+        const payload = { email, password, roleId: 2 };
+        const { message: okMsg, user } = await AuthService.register(payload);
+        if (!user) throw new Error("Error al crear el usuario");
+        this.message.success(okMsg || "¡Registro exitoso! Inicia sesión.");
+        this.$router.push("/login");
+      } catch (err) {
+        const msg =
+          err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          err?.message ||
+          "Error al registrar.";
+        this.message.error(msg);
       } finally {
         this.isLoading = false;
       }

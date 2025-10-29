@@ -7,7 +7,7 @@ export const listStudents = async (req, res) => {
   try {
     const students = await prisma.student.findMany({
       where: { status: true },
-      orderBy: { id: "asc" },
+      orderBy: { id: "desc" },
       include: {
         enrollments: true,
       },
@@ -23,19 +23,19 @@ export const getStudentById = async (req, res) => {
   try {
     const student = await prisma.student.findUnique({
       where: { id: BigInt(id) },
+      include: { _count: { select: { contacts: true } } },
     });
-
     if (!student || student.status !== true) {
       return res.status(404).json({ error: "Estudiante no encontrado." });
     }
-
     const data = serialize(student);
     data.dateofbirth = student.dateofbirth
       ? new Date(student.dateofbirth).getTime()
       : null;
-
+    data.has_contacts = (student._count?.contacts || 0) > 0;
+    delete data._count;
     res.json({ student: data });
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Error al obtener estudiante." });
   }
 };

@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 export const listActivities = async (req, res) => {
   try {
     const activities = await prisma.activity.findMany({
-      orderBy: { id: "asc" },
+      orderBy: { id: "desc" },
     });
     res.json({ activities: serialize(activities) });
   } catch (err) {

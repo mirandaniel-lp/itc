@@ -40,6 +40,7 @@
                 <n-select
                   v-model:value="form.teacherId"
                   :options="teacherOptions"
+                  :loading="loadingCats"
                   filterable
                   clearable
                   size="large"
@@ -51,10 +52,54 @@
                 <n-select
                   v-model:value="form.modalityId"
                   :options="modalityOptions"
+                  :loading="loadingCats"
                   filterable
                   clearable
                   size="large"
                   placeholder="Seleccione modalidad"
+                />
+              </n-form-item>
+
+              <n-form-item label="Programa" path="programId">
+                <n-select
+                  v-model:value="form.programId"
+                  :options="programOptions"
+                  :loading="loadingCats"
+                  filterable
+                  clearable
+                  size="large"
+                  placeholder="Seleccione programa"
+                />
+              </n-form-item>
+
+              <n-form-item label="Periodo Académico" path="termId">
+                <n-select
+                  v-model:value="form.termId"
+                  :options="termOptions"
+                  :loading="loadingCats"
+                  filterable
+                  clearable
+                  size="large"
+                  placeholder="Seleccione periodo"
+                />
+              </n-form-item>
+
+              <n-form-item label="Turno" path="shift">
+                <n-select
+                  v-model:value="form.shift"
+                  :options="shiftOptions"
+                  :loading="loadingCats"
+                  size="large"
+                  placeholder="Seleccione turno"
+                />
+              </n-form-item>
+
+              <n-form-item label="Cupo Máximo" path="max_capacity">
+                <n-input-number
+                  v-model:value="form.max_capacity"
+                  :min="1"
+                  size="large"
+                  placeholder="Ej: 30"
                 />
               </n-form-item>
 
@@ -73,7 +118,7 @@
               <n-form-item label="Costo (Bs.)" path="cost">
                 <n-input-number
                   v-model:value="form.cost"
-                  :min="100"
+                  :min="0"
                   :precision="1"
                   :step="1"
                   size="large"
@@ -98,9 +143,8 @@
                 strong
                 size="large"
                 @click="router.push('/courses')"
+                >Volver</n-button
               >
-                Volver
-              </n-button>
               <n-button
                 type="primary"
                 strong
@@ -108,9 +152,8 @@
                 :loading="submitting"
                 :disabled="submitting"
                 @click="submit"
+                >Actualizar</n-button
               >
-                Actualizar
-              </n-button>
             </div>
           </n-form>
         </n-config-provider>
@@ -135,8 +178,6 @@ import { ref, reactive, onMounted, computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import AppLayout from "@/layouts/AppLayout.vue";
 import CourseService from "@/services/courseService";
-import TeacherService from "@/services/teacherService";
-import axios from "axios";
 
 const router = useRouter();
 const route = useRoute();
@@ -144,6 +185,7 @@ const courseId = computed(() => route.params.id);
 const message = useMessage();
 const formRef = ref(null);
 const submitting = ref(false);
+const loadingCats = ref(true);
 
 const form = reactive({
   name: "",
@@ -153,6 +195,10 @@ const form = reactive({
   range: null,
   teacherId: null,
   modalityId: null,
+  programId: null,
+  termId: null,
+  shift: null,
+  max_capacity: null,
 });
 
 const parallelOptions = [
@@ -163,6 +209,9 @@ const parallelOptions = [
 
 const teacherOptions = ref([]);
 const modalityOptions = ref([]);
+const programOptions = ref([]);
+const termOptions = ref([]);
+const shiftOptions = ref([]);
 
 const theme = {
   common: { primaryColor: "#2563eb" },
@@ -250,18 +299,29 @@ const rules = {
   modalityId: [
     { required: true, message: "Seleccione una modalidad", trigger: "change" },
   ],
+  programId: [
+    { required: true, message: "Seleccione un programa", trigger: "change" },
+  ],
+  termId: [
+    { required: true, message: "Seleccione un periodo", trigger: "change" },
+  ],
+  shift: [
+    { required: true, message: "Seleccione un turno", trigger: "change" },
+  ],
+  max_capacity: [
+    {
+      type: "number",
+      min: 1,
+      message: "Ingrese un cupo válido",
+      trigger: "blur",
+    },
+  ],
   range: [
     {
       trigger: ["change", "blur"],
       validator: (_, v) => {
-        if (
-          !Array.isArray(v) ||
-          v.length !== 2 ||
-          v[0] == null ||
-          v[1] == null
-        ) {
+        if (!Array.isArray(v) || v.length !== 2 || v[0] == null || v[1] == null)
           return new Error("Seleccione inicio y fin");
-        }
         const [s, e] = v;
         if (e < s)
           return new Error("La fecha final no puede ser menor al inicio");
@@ -269,12 +329,75 @@ const rules = {
         const max = addMonths(s, 12);
         return e >= min && e <= max
           ? true
-          : new Error(
-              "La duración debe ser entre 3 y 12 meses desde el inicio"
-            );
+          : new Error("La duración debe ser entre 3 y 12 meses");
       },
     },
   ],
+};
+
+const loadCatalogs = async () => {
+  try {
+    loadingCats.value = true;
+    const c = await CourseService.getCatalogs();
+
+    teacherOptions.value = (c.teachers || []).map((t) => ({
+      label: `${t.name} ${t.last_name ?? ""} ${
+        t.second_last_name ?? ""
+      }`.trim(),
+      value: String(t.id),
+    }));
+
+    modalityOptions.value = (c.modalities || []).map((m) => ({
+      label: m.name,
+      value: String(m.id),
+    }));
+
+    programOptions.value = (c.programs || []).map((p) => ({
+      label: p.name,
+      value: String(p.id),
+    }));
+
+    termOptions.value = (c.terms || []).map((t) => ({
+      label: t.name,
+      value: String(t.id),
+    }));
+
+    shiftOptions.value = (c.shifts || ["MAÑANA", "TARDE", "NOCHE"]).map(
+      (s) => ({
+        label: s.charAt(0) + s.slice(1).toLowerCase(),
+        value: s,
+      })
+    );
+  } catch {
+    message.error("Error al cargar catálogos.");
+  } finally {
+    loadingCats.value = false;
+  }
+};
+
+const fetchCourse = async () => {
+  try {
+    const course = await CourseService.getById(courseId.value);
+    const s = course.start_date ? new Date(course.start_date).getTime() : null;
+    const e = course.end_date ? new Date(course.end_date).getTime() : null;
+
+    form.name = course.name || "";
+    form.parallel = course.parallel || null;
+    form.description = course.description || "";
+    form.cost = course.cost != null ? Number(course.cost) : 100;
+    form.range = s && e ? [s, e] : null;
+
+    form.teacherId = course.teacherId != null ? String(course.teacherId) : null;
+    form.modalityId =
+      course.modalityId != null ? String(course.modalityId) : null;
+    form.programId = course.programId != null ? String(course.programId) : null;
+    form.termId = course.termId != null ? String(course.termId) : null;
+    form.shift = course.shift ?? null;
+    form.max_capacity = course.max_capacity ?? null;
+  } catch {
+    message.error("Curso no encontrado.");
+    router.push("/courses");
+  }
 };
 
 const validateOrToast = async () => {
@@ -285,46 +408,6 @@ const validateOrToast = async () => {
     const first = Array.isArray(errs) ? errs[0] : null;
     message.error(first?.message || "Corrige los campos resaltados");
     return false;
-  }
-};
-
-const loadSelects = async () => {
-  try {
-    const teachers = await TeacherService.getAll();
-    teacherOptions.value = (teachers || []).map((t) => ({
-      label: `${t.name} ${t.last_name ?? ""} ${
-        t.second_last_name ?? ""
-      }`.trim(),
-      value: t.id,
-    }));
-    const res = await axios.get("http://localhost:3000/api/modalities", {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      withCredentials: true,
-    });
-    modalityOptions.value = (res.data.modalities || []).map((m) => ({
-      label: m.name,
-      value: m.id,
-    }));
-  } catch {
-    message.error("Error al cargar docentes o modalidades.");
-  }
-};
-
-const fetchCourse = async () => {
-  try {
-    const course = await CourseService.getById(courseId.value);
-    const s = course.start_date ? new Date(course.start_date).getTime() : null;
-    const e = course.end_date ? new Date(course.end_date).getTime() : null;
-    form.name = course.name || "";
-    form.parallel = course.parallel || null;
-    form.description = course.description || "";
-    form.cost = course.cost != null ? Number(course.cost) : 100;
-    form.range = s && e ? [s, e] : null;
-    form.teacherId = course.teacherId ?? null;
-    form.modalityId = course.modalityId ?? null;
-  } catch {
-    message.error("Curso no encontrado.");
-    router.push("/courses");
   }
 };
 
@@ -344,6 +427,10 @@ const submit = async () => {
       end_date: endTs ? new Date(endTs).toISOString() : null,
       teacherId: form.teacherId,
       modalityId: form.modalityId,
+      programId: form.programId,
+      termId: form.termId,
+      shift: form.shift,
+      max_capacity: form.max_capacity ?? null,
     };
     await CourseService.update(courseId.value, payload);
     message.success("Curso actualizado.");
@@ -361,7 +448,7 @@ const submit = async () => {
 };
 
 onMounted(async () => {
-  await loadSelects();
+  await loadCatalogs();
   await fetchCourse();
 });
 </script>

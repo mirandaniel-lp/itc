@@ -26,3 +26,5 @@ build/
 # Prisma generated files
 /generated/prisma
 uploads/
+secrets/
+

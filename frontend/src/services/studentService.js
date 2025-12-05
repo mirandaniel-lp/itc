@@ -12,15 +12,21 @@ export default {
     const { data } = await http.get(`${API}/${id}`);
     return data.student ?? data;
   },
-  async create(formData) {
+  async create(formData, onProgress) {
     const { data } = await http.post(API, formData, {
       headers: { "Content-Type": "multipart/form-data" },
+      onUploadProgress: onProgress
+        ? (e) => onProgress(Math.round((e.loaded * 100) / (e.total || 1)))
+        : undefined,
     });
     return data.student ?? data;
   },
-  async update(id, formData) {
+  async update(id, formData, onProgress) {
     const { data } = await http.put(`${API}/${id}`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
+      onUploadProgress: onProgress
+        ? (e) => onProgress(Math.round((e.loaded * 100) / (e.total || 1)))
+        : undefined,
     });
     return data.student ?? data;
   },

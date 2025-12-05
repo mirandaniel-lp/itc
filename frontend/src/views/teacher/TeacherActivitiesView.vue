@@ -76,7 +76,6 @@
       </div>
     </n-card>
 
-    <!-- Crear -->
     <n-modal
       v-model:show="openCreate"
       preset="card"
@@ -154,7 +153,6 @@
       </template>
     </n-modal>
 
-    <!-- Editar -->
     <n-modal
       v-model:show="openEdit"
       preset="card"
@@ -235,7 +233,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
   NCard,
@@ -295,24 +293,21 @@ const filtered = computed(() =>
   })
 );
 
-// modal state
 const openCreate = ref(false);
 const openEdit = ref(false);
 const saving = ref(false);
 
-// form
 const form = ref({
   id: null,
   title: "",
   description: "",
   weight_pct: null,
-  type: null, // <-- null para forzar selección
+  type: null,
   due_date: null,
   courseId: null,
 });
 const formDate = ref(null);
 
-// reglas
 const rules = {
   title: {
     required: true,
@@ -338,7 +333,6 @@ const rules = {
 const createRef = ref(null);
 const editRef = ref(null);
 
-// utils
 function formatDate(d) {
   try {
     return new Date(d).toLocaleDateString();
@@ -359,7 +353,6 @@ function resetForm() {
   formDate.value = null;
 }
 
-// actions
 function onEdit(a) {
   form.value = {
     id: a.id,
@@ -382,13 +375,12 @@ function goGrade(a) {
 }
 
 async function onCreate() {
-  // VALIDACIÓN CONTROLADA
   try {
     await createRef.value?.validate();
   } catch (err) {
     const first = Array.isArray(err) ? err[0] : err;
     message.error(first?.message || "Corrige los campos marcados.");
-    return; // no continuar si hay errores
+    return;
   }
 
   saving.value = true;
@@ -446,10 +438,17 @@ async function onRemove(a) {
 
 async function loadData() {
   courses.value = await TeacherSessionService.getCourses();
-  activities.value = await TeacherSessionService.getActivities({
-    courseId: courseId.value,
-  });
+  const params = {};
+  if (courseId.value) params.courseId = courseId.value;
+  const list = await TeacherSessionService.getActivities(
+    Object.keys(params).length ? params : undefined
+  );
+  activities.value = Array.isArray(list) ? list : list.activities ?? [];
 }
+
+watch(courseId, async () => {
+  await loadData();
+});
 
 onMounted(loadData);
 </script>

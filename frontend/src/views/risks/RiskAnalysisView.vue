@@ -75,43 +75,56 @@
         <div
           class="rounded-2xl border border-[#334155] bg-[#1e293b]/80 p-4 shadow-[0_6px_25px_rgba(0,0,0,0.4)]"
         >
-          <div class="flex flex-wrap gap-3">
+          <div class="flex flex-wrap gap-3 items-center">
             <n-button
               :disabled="!courseId || !items.length"
               :loading="saving"
               class="rounded-lg font-extrabold"
               @click="onPersist"
+              >Guardar Resultados</n-button
             >
-              Guardar Resultados
-            </n-button>
             <n-button
               tertiary
               class="rounded-lg font-extrabold"
               @click="openTrain = true"
+              >Actualizar Modelo</n-button
             >
-              Actualizar Modelo
-            </n-button>
             <n-button
               tertiary
               :disabled="!courseId"
               :loading="validating"
               class="rounded-lg font-extrabold"
               @click="onValidate"
+              >Validar Precisión</n-button
             >
-              Validar Precisión
-            </n-button>
             <n-button
               tertiary
               :disabled="!items.length"
               class="rounded-lg font-extrabold"
               @click="exportCsv"
+              >Exportar CSV</n-button
             >
-              Exportar CSV
-            </n-button>
+            <n-button
+              tertiary
+              :disabled="!courseId"
+              class="rounded-lg font-extrabold"
+              @click="tuningOpen = true"
+              >Ajustar Umbral</n-button
+            >
             <div class="ml-auto text-xs text-gray-400" v-if="meta.version">
               Versión:
-              <span class="text-white font-semibold">{{ meta.version }}</span> •
-              Umbral: {{ meta.threshold?.toFixed(3) }} • Contaminación:
+              <span class="text-white font-semibold">{{ meta.version }}</span>
+              • Entrenado hace:
+              <span class="text-white">{{ staleDays ?? "-" }}</span> días
+              <n-tag
+                v-if="suggestTrain"
+                type="warning"
+                round
+                size="small"
+                class="ml-2"
+                >Sugerir actualizar</n-tag
+              >
+              • Umbral: {{ meta.threshold?.toFixed(3) }} • Contaminación:
               {{ meta.contamination }}
             </div>
           </div>
@@ -143,9 +156,8 @@
               secondary
               class="rounded-lg font-extrabold"
               @click="onlyAlerts = !onlyAlerts"
+              >{{ onlyAlerts ? "Mostrar todos" : "Solo alertas" }}</n-button
             >
-              {{ onlyAlerts ? "Mostrar todos" : "Solo alertas" }}
-            </n-button>
           </div>
           <div class="mt-4 flex gap-2">
             <button
@@ -222,6 +234,7 @@
               ></div>
             </div>
           </div>
+
           <div
             class="rounded-2xl border border-[#334155] bg-[#1e293b]/80 p-5 shadow-[0_6px_25px_rgba(0,0,0,0.4)]"
           >
@@ -240,15 +253,16 @@
                 <div class="flex-1 h-2 bg-white/10 rounded">
                   <div
                     class="h-2 rounded bg-[#ef4444]"
-                    :style="{ width: (r.risk_score01 * 100).toFixed(0) + '%' }"
+                    :style="{ width: (r.risk_rank01 * 100).toFixed(0) + '%' }"
                   ></div>
                 </div>
                 <div class="w-12 text-right text-xs text-gray-300">
-                  {{ r.risk_score01.toFixed(2) }}
+                  {{ r.risk_rank01.toFixed(2) }}
                 </div>
               </div>
             </div>
           </div>
+
           <div
             class="md:col-span-2 rounded-2xl border border-[#334155] bg-[#1e293b]/80 p-5 shadow-[0_6px_25px_rgba(0,0,0,0.4)]"
           >
@@ -298,6 +312,7 @@
                 </div>
                 <div class="text-xs text-gray-400">{{ detail?.ci || "-" }}</div>
               </div>
+
               <div
                 class="rounded-2xl border border-[#334155] bg-[#1e293b]/80 p-4"
               >
@@ -310,10 +325,27 @@
                     >{{ levelLabel(levelOf(detail)) }}</n-tag
                   >
                   <div class="text-2xl font-extrabold">
-                    {{ Math.round((detail?.risk_score01 || 0) * 100) }}/100
+                    {{ Math.round((detail?.risk_rank01 || 0) * 100) }}/100
                   </div>
                 </div>
+                <div class="mt-2 text-xs text-gray-400">
+                  Confianza:
+                  <span class="text-white font-semibold">{{
+                    (detail?.confidence ?? 0).toFixed(2)
+                  }}</span>
+                </div>
+                <div class="mt-1 text-xs text-gray-400">
+                  Umbral aplicado:
+                  <span class="text-white font-semibold">{{
+                    meta.threshold ?? "-"
+                  }}</span>
+                  • Fuente:
+                  <span class="text-white font-semibold">{{
+                    meta.threshold ? "meta" : "sample"
+                  }}</span>
+                </div>
               </div>
+
               <div
                 class="rounded-2xl border border-[#334155] bg-[#1e293b]/80 p-4"
               >
@@ -327,6 +359,7 @@
                   </li>
                 </ul>
               </div>
+
               <div
                 class="rounded-2xl border border-[#334155] bg-[#1e293b]/80 p-4"
               >
@@ -340,7 +373,14 @@
                   <li>Monitorear semanalmente</li>
                 </ul>
                 <div class="flex gap-2 mt-3">
-                  <n-button type="primary">Enviar Correo</n-button>
+                  <n-button
+                    type="secondary"
+                    :disabled="!detail || !detail.student_id"
+                    :loading="sendingNotification"
+                    @click="onSendNotification(detail)"
+                  >
+                    Enviar Notificación
+                  </n-button>
                   <n-button secondary>Generar Reporte</n-button>
                 </div>
               </div>
@@ -388,45 +428,270 @@
         >
           <div class="space-y-3">
             <div class="text-sm text-gray-300">
-              Precisión: {{ (validateResult?.precision || 0).toFixed(2) }} •
-              Recall: {{ (validateResult?.recall || 0).toFixed(2) }}
-            </div>
-            <table class="w-full text-sm">
-              <thead class="text-left text-gray-400">
-                <tr>
-                  <th class="py-2">Métrica</th>
-                  <th class="py-2">Valor</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr class="border-t border-white/10">
-                  <td class="py-2">TP</td>
-                  <td class="py-2">{{ validateResult?.tp || 0 }}</td>
-                </tr>
-                <tr class="border-t border-white/10">
-                  <td class="py-2">FP</td>
-                  <td class="py-2">{{ validateResult?.fp || 0 }}</td>
-                </tr>
-                <tr class="border-t border-white/10">
-                  <td class="py-2">TN</td>
-                  <td class="py-2">{{ validateResult?.tn || 0 }}</td>
-                </tr>
-                <tr class="border-t border-white/10">
-                  <td class="py-2">FN</td>
-                  <td class="py-2">{{ validateResult?.fn || 0 }}</td>
-                </tr>
-              </tbody>
-            </table>
-            <div class="text-xs text-gray-400">
-              Versión:
-              <span class="text-white">{{
+              Umbral actual:
+              <span class="text-white font-semibold">{{
+                validateResult?.threshold ?? meta.threshold ?? "-"
+              }}</span>
+              • Contaminación:
+              <span class="text-white font-semibold">{{
+                validateResult?.contamination ?? meta.contamination ?? "-"
+              }}</span>
+              • Versión:
+              <span class="text-white font-semibold">{{
                 validateResult?.version || meta.version || "-"
               }}</span>
             </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div class="rounded-lg p-3 bg-[#071032] text-center">
+                <div class="text-xs text-gray-400">Total analizados</div>
+                <div class="text-2xl font-extrabold text-white mt-1">
+                  {{ validateResult?.n || 0 }}
+                </div>
+              </div>
+              <div class="rounded-lg p-3 bg-[#071032] text-center">
+                <div class="text-xs text-gray-400">
+                  Marcados por el modelo (anomalía)
+                </div>
+                <div class="text-2xl font-extrabold text-white mt-1">
+                  {{ validateResult?.alerts_chosen ?? 0 }}
+                </div>
+              </div>
+              <div class="rounded-lg p-3 bg-[#071032] text-center">
+                <div class="text-xs text-gray-400">No marcados (normales)</div>
+                <div class="text-2xl font-extrabold text-white mt-1">
+                  {{ validateResult?.normals_chosen ?? 0 }}
+                </div>
+              </div>
+            </div>
+
+            <div v-if="validateResult?.sample?.length" class="mt-3">
+              <div class="text-sm text-gray-300 mb-2">
+                Muestra de filas (primeras 10)
+              </div>
+              <div
+                class="mt-2 overflow-auto max-h-48 rounded border border-white/5 bg-[#071032] p-2 text-xs"
+              >
+                <table class="w-full">
+                  <thead class="text-left text-gray-400">
+                    <tr>
+                      <th class="py-1">Estudiante</th>
+                      <th class="py-1">Score</th>
+                      <th class="py-1">Alerta (elegida)</th>
+                      <th class="py-1">Confianza</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="s in validateResult.sample"
+                      :key="s.student_id"
+                      class="border-t border-white/5"
+                    >
+                      <td class="py-1">
+                        {{ s.student_id }} - {{ s.studentName || "-" }}
+                      </td>
+                      <td class="py-1">{{ Number(s.score).toFixed(4) }}</td>
+                      <td class="py-1">
+                        {{ s.alert_chosen === true ? "Sí" : "No" }}
+                      </td>
+                      <td class="py-1">{{ (s.confidence ?? 0).toFixed(2) }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="text-xs text-gray-400 mt-2">
+              Explicación: aquí se muestra cuántos estudiantes el modelo marca
+              como "alerta" según el umbral seleccionado y el filtro de
+              confianza aplicado.
+            </div>
+
             <div class="flex justify-end">
               <n-button type="primary" @click="openValidate = false"
                 >Cerrar</n-button
               >
+            </div>
+          </div>
+        </n-modal>
+
+        <n-modal
+          v-model:show="tuningOpen"
+          preset="card"
+          title="Ajuste de Umbral"
+          style="max-width: 720px; width: 100%"
+        >
+          <div class="space-y-4">
+            <div class="flex items-center gap-3">
+              <n-select
+                v-model:value="tunePolicy.mode"
+                :options="[
+                  { label: 'Balanceado (mejor F1)', value: 'max_f1' },
+                  {
+                    label: 'Conservador (minimiza falsas alarmas)',
+                    value: 'precision',
+                  },
+                  { label: 'Agresivo (maximiza detección)', value: 'recall' },
+                ]"
+                style="width: 320px"
+              />
+              <div class="ml-auto text-xs text-gray-400">
+                Grid:
+                <n-input-number
+                  v-model:value="tuneGridSize"
+                  :min="10"
+                  :max="200"
+                  size="small"
+                  style="width: 110px"
+                />
+              </div>
+            </div>
+
+            <div class="flex gap-2">
+              <n-button
+                type="primary"
+                :loading="tuningLoading"
+                :disabled="!courseId"
+                @click="runTune"
+                >Ejecutar Búsqueda</n-button
+              >
+              <n-button @click="tuningOpen = false">Cerrar</n-button>
+              <div class="ml-auto text-xs text-gray-400" v-if="tuneResult">
+                Versión:
+                <span class="text-white font-semibold">{{
+                  tuneResult.version
+                }}</span>
+              </div>
+            </div>
+
+            <div v-if="tuneResult">
+              <div class="text-sm text-gray-300 mb-2">
+                Resumen fácil de entender
+              </div>
+
+              <div
+                class="rounded-lg border border-white/10 p-3 bg-[#0b1224] text-sm text-gray-200"
+              >
+                <div class="mb-2">
+                  Umbral sugerido (balanceado):
+                  <span class="font-extrabold text-white">{{
+                    tuneResult.best?.th?.toFixed(4)
+                  }}</span>
+                </div>
+                <div>
+                  Si aplicas este umbral se marcarían
+                  <span class="font-semibold">{{
+                    tuneResult.best?.marked
+                  }}</span>
+                  estudiantes como "en riesgo" (según Isolation Forest).
+                </div>
+                <div class="mt-2">
+                  Interpretación:
+                  <span class="text-white font-semibold">{{
+                    humanInterpretation(tuneResult.best)
+                  }}</span>
+                </div>
+              </div>
+
+              <div class="mt-3 grid grid-cols-3 gap-3">
+                <div class="rounded-lg border border-white/10 p-3 bg-[#071032]">
+                  <div class="text-xs text-gray-400 mb-2">Conservador</div>
+                  <div class="text-white font-extrabold text-lg">
+                    {{ presets.conservative?.th?.toFixed(4) || "-" }}
+                  </div>
+                  <div class="text-xs text-gray-400 mt-1">
+                    Marca {{ presets.conservative?.count || 0 }} estudiantes
+                  </div>
+                  <div class="text-xs text-gray-300 mt-2">
+                    Recomendado si quieres evitar falsas alarmas.
+                  </div>
+                  <div class="mt-3">
+                    <n-button
+                      size="small"
+                      @click="applyPreset('conservative')"
+                      :disabled="!presets.conservative"
+                      >Aplicar</n-button
+                    >
+                  </div>
+                </div>
+
+                <div class="rounded-lg border border-white/10 p-3 bg-[#071032]">
+                  <div class="text-xs text-gray-400 mb-2">Balanceado</div>
+                  <div class="text-white font-extrabold text-lg">
+                    {{ presets.balanced?.th?.toFixed(4) || "-" }}
+                  </div>
+                  <div class="text-xs text-gray-400 mt-1">
+                    Marca {{ presets.balanced?.count || 0 }} estudiantes
+                  </div>
+                  <div class="text-xs text-gray-300 mt-2">
+                    Buena opción por defecto.
+                  </div>
+                  <div class="mt-3">
+                    <n-button
+                      size="small"
+                      @click="applyPreset('balanced')"
+                      :disabled="!presets.balanced"
+                      >Aplicar recomendado</n-button
+                    >
+                  </div>
+                </div>
+
+                <div class="rounded-lg border border-white/10 p-3 bg-[#071032]">
+                  <div class="text-xs text-gray-400 mb-2">Agresivo</div>
+                  <div class="text-white font-extrabold text-lg">
+                    {{ presets.aggressive?.th?.toFixed(4) || "-" }}
+                  </div>
+                  <div class="text-xs text-gray-400 mt-1">
+                    Marca {{ presets.aggressive?.count || 0 }} estudiantes
+                  </div>
+                  <div class="text-xs text-gray-300 mt-2">
+                    Recomendado si priorizas detectar la mayor cantidad posible.
+                  </div>
+                  <div class="mt-3">
+                    <n-button
+                      size="small"
+                      @click="applyPreset('aggressive')"
+                      :disabled="!presets.aggressive"
+                      >Aplicar</n-button
+                    >
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-4">
+                <div class="text-sm text-gray-300 mb-2">
+                  Muestra de métricas
+                </div>
+                <div class="mt-2 overflow-auto max-h-48">
+                  <table class="w-full text-xs">
+                    <thead class="text-left text-gray-400">
+                      <tr>
+                        <th class="py-2">Threshold</th>
+                        <th class="py-2">Marcados</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr
+                        v-for="m in tuneResult.metricsSample"
+                        :key="m.th"
+                        class="border-t border-white/5"
+                      >
+                        <td class="py-1">{{ m.th.toFixed(4) }}</td>
+                        <td class="py-1">{{ m.marked }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="flex justify-end gap-2 mt-3">
+                <n-button
+                  type="primary"
+                  :loading="applyingTune"
+                  @click="applySelected"
+                  >Aplicar umbral seleccionado</n-button
+                >
+              </div>
             </div>
           </div>
         </n-modal>
@@ -448,11 +713,33 @@ import {
   NDataTable,
   NPagination,
   useMessage,
+  NInputNumber,
 } from "naive-ui";
 import { h } from "vue";
 import AppLayout from "@/layouts/AppLayout.vue";
 import riskService from "@/services/riskService";
 import CourseService from "@/services/courseService";
+import iforestEvalService from "@/services/iforestEvalService";
+import mobileNotificationsService from "@/services/mobileNotificationsService";
+
+function parseIfVersion(ver) {
+  const m = String(ver || "").match(/^IF-(\d{8})-(\d{6})$/);
+  if (!m) return null;
+  const ymd = m[1],
+    hms = m[2];
+  const dt = new Date(
+    `${ymd.slice(0, 4)}-${ymd.slice(4, 6)}-${ymd.slice(6, 8)}T${hms.slice(
+      0,
+      2
+    )}:${hms.slice(2, 4)}:${hms.slice(4, 6)}Z`
+  );
+  return isNaN(dt.getTime()) ? null : dt;
+}
+function daysSince(date) {
+  if (!date) return null;
+  const ms = Date.now() - date.getTime();
+  return Math.floor(ms / (1000 * 60 * 60 * 24));
+}
 
 export default {
   name: "RiskAnalysisView",
@@ -468,6 +755,7 @@ export default {
     NDrawerContent,
     NDataTable,
     NPagination,
+    NInputNumber,
   },
   data() {
     return {
@@ -506,6 +794,19 @@ export default {
       activeTab:
         "px-3 py-1.5 rounded-lg text-sm font-extrabold bg-[#2563eb] text-white border border-[#3b82f6]/60",
       columns: [],
+      staleDays: null,
+      suggestTrain: false,
+      tuningOpen: false,
+      tuningLoading: false,
+      tuneResult: null,
+      tuneGridSize: 60,
+      tunePolicy: { mode: "max_f1" },
+      selectedThreshold: null,
+      applyingTune: false,
+      presets: { conservative: null, balanced: null, aggressive: null },
+      showDetail: false,
+      detail: null,
+      sendingNotification: false,
     };
   },
   computed: {
@@ -521,12 +822,12 @@ export default {
         .filter((r) =>
           this.riskFilter === "all" ? true : this.levelOf(r) === this.riskFilter
         )
-        .filter((r) => r.risk_score01 >= this.scoreMin)
-        .filter((r) => (this.onlyAlerts ? r.alert : true))
+        .filter((r) => (r.risk_rank01 ?? 0) >= this.scoreMin)
+        .filter((r) => (this.onlyAlerts ? r.alert_chosen : true))
         .filter((r) =>
           `${r.studentName || ""} ${r.ci || ""}`.toLowerCase().includes(text)
         )
-        .sort((a, b) => b.risk_score01 - a.risk_score01);
+        .sort((a, b) => (b.risk_rank01 ?? 0) - (a.risk_rank01 ?? 0));
     },
     paginated() {
       const start = (this.page - 1) * this.pageSize;
@@ -558,7 +859,7 @@ export default {
   },
   methods: {
     levelOf(r) {
-      const s = Number(r?.risk_score01 || 0);
+      const s = Number(r?.risk_rank01 ?? r?.risk_score01 ?? 0);
       if (s >= 0.66) return "high";
       if (s >= 0.33) return "medium";
       return "low";
@@ -590,7 +891,6 @@ export default {
       const g = r.grade_avg ?? 60;
       return Math.min(Math.max(g / 100, 0), 1);
     },
-
     async loadCourses() {
       this.loadingCourses = true;
       try {
@@ -602,7 +902,6 @@ export default {
         this.loadingCourses = false;
       }
     },
-
     async onDetect() {
       if (!this.courseId) return;
       this.loadingPredict = true;
@@ -610,8 +909,8 @@ export default {
         const res = await riskService.getPredictions(this.courseId);
         this.items = res.items || [];
         this.meta = {
-          threshold: res.threshold,
-          contamination: res.contamination,
+          threshold: res.threshold ?? this.meta.threshold,
+          contamination: res.contamination ?? this.meta.contamination,
           version: res.version || this.meta.version,
         };
         this.page = 1;
@@ -622,7 +921,6 @@ export default {
         this.loadingPredict = false;
       }
     },
-
     async onPersist() {
       this.saving = true;
       try {
@@ -637,7 +935,6 @@ export default {
         this.saving = false;
       }
     },
-
     async onTrain() {
       this.training = true;
       try {
@@ -650,6 +947,9 @@ export default {
           contamination: r.contamination,
           version: r.version,
         };
+        const d = parseIfVersion(r.version);
+        this.staleDays = daysSince(d);
+        this.suggestTrain = false;
         this.message.success(`Modelo actualizado: ${r.version}`);
         this.openTrain = false;
         await this.onDetect();
@@ -659,7 +959,6 @@ export default {
         this.training = false;
       }
     },
-
     async onValidate() {
       this.validating = true;
       try {
@@ -672,7 +971,6 @@ export default {
         this.validating = false;
       }
     },
-
     exportCsv() {
       const rows = [
         [
@@ -681,7 +979,7 @@ export default {
           "Nivel de Riesgo",
           "Puntuación",
           "Alerta",
-          "Motivos",
+          "Confianza",
         ],
       ];
       this.filtered.forEach((r) =>
@@ -689,9 +987,9 @@ export default {
           r.studentName || "",
           r.ci || "",
           this.levelLabel(this.levelOf(r)),
-          r.risk_score01?.toFixed(4) || "0",
-          r.alert ? "Sí" : "No",
-          (r.reasons || []).join(" | "),
+          (r.risk_rank01 ?? r.risk_score01 ?? 0).toFixed(4),
+          r.alert_chosen ? "Sí" : "No",
+          (r.confidence ?? 0).toFixed(2),
         ])
       );
       const csv = rows
@@ -707,12 +1005,10 @@ export default {
       a.click();
       URL.revokeObjectURL(url);
     },
-
     openDetailRow(r) {
       this.detail = r;
       this.showDetail = true;
     },
-
     buildColumns() {
       this.columns = [
         {
@@ -733,7 +1029,20 @@ export default {
                 { class: "font-extrabold text-white" },
                 row.studentName || "Estudiante"
               ),
-              h("div", { class: "text-xs text-gray-400" }, row.ci || "-"),
+              h(
+                "div",
+                { class: "text-xs text-gray-400 flex items-center gap-2" },
+                [
+                  h("span", row.ci || "-"),
+                  h(
+                    "span",
+                    {
+                      class: "ml-2 text-xs bg-white/5 px-2 py-0.5 rounded-full",
+                    },
+                    `Conf: ${(row.confidence ?? 0).toFixed(2)}`
+                  ),
+                ]
+              ),
             ]),
         },
         {
@@ -758,22 +1067,18 @@ export default {
             h("div", { class: "flex items-center gap-3 justify-center" }, [
               h(
                 "div",
-                {
-                  class:
-                    "w-40 h-2 bg白/10 rounded-full overflow-hidden".replace(
-                      "白",
-                      "white"
-                    ),
-                },
+                { class: "w-40 h-2 bg-white/10 rounded-full overflow-hidden" },
                 [
                   h("div", {
                     class: "h-2",
                     style: {
-                      width: `${(row.risk_score01 * 100).toFixed(0)}%`,
+                      width: `${(
+                        (row.risk_rank01 ?? row.risk_score01 ?? 0) * 100
+                      ).toFixed(0)}%`,
                       background:
-                        row.risk_score01 >= 0.66
+                        (row.risk_rank01 ?? row.risk_score01 ?? 0) >= 0.66
                           ? "#ef4444"
-                          : row.risk_score01 >= 0.33
+                          : (row.risk_rank01 ?? row.risk_score01 ?? 0) >= 0.33
                           ? "#f59e0b"
                           : "#22c55e",
                     },
@@ -783,7 +1088,7 @@ export default {
               h(
                 "div",
                 { class: "text-xs text-gray-300" },
-                row.risk_score01.toFixed(2)
+                (row.risk_rank01 ?? row.risk_score01 ?? 0).toFixed(2)
               ),
             ]),
         },
@@ -796,21 +1101,11 @@ export default {
               {
                 class: "px-3 py-1 rounded-full text-xs font-bold",
                 style: {
-                  background: row.alert ? "#ef4444" : "#22c55e",
+                  background: row.alert_chosen ? "#ef4444" : "#22c55e",
                   color: "#111827",
                 },
               },
-              row.alert ? "Sí" : "No"
-            ),
-        },
-        {
-          title: "Motivos",
-          key: "reasons",
-          render: (row) =>
-            h(
-              "div",
-              { class: "text-xs text-gray-300 truncate max-w-xs" },
-              (row.reasons || []).join(" · ") || "-"
+              row.alert_chosen ? "Sí" : "No"
             ),
         },
         {
@@ -829,17 +1124,122 @@ export default {
         },
       ];
     },
+    humanInterpretation(best) {
+      if (!best || best.marked === undefined)
+        return "No hay datos suficientes.";
+      const marked = Number(best.marked || 0);
+      if (marked === 0) return "No marcaría a ningún estudiante.";
+      return `Se marcarían ${marked} estudiantes como 'en riesgo' con este umbral.`;
+    },
+    findPresets(metrics) {
+      if (!metrics || !metrics.length)
+        return { conservative: null, balanced: null, aggressive: null };
+      const conservative = metrics[0];
+      const aggressive = metrics[metrics.length - 1];
+      const balanced = metrics[Math.floor(metrics.length / 2)];
+      return {
+        conservative: { th: conservative.th, count: conservative.marked },
+        balanced: { th: balanced.th, count: balanced.marked },
+        aggressive: { th: aggressive.th, count: aggressive.marked },
+      };
+    },
+    async runTune() {
+      if (!this.courseId) return;
+      this.tuningLoading = true;
+      try {
+        const res = await iforestEvalService.tuneCourse(
+          this.courseId,
+          this.tunePolicy,
+          this.tuneGridSize
+        );
+        const metrics = res.metrics || [];
+        const best = res.best || null;
+        this.tuneResult = {
+          version: res.version,
+          best,
+          metricsAll: metrics,
+          metricsSample: metrics.filter(
+            (_, i) => i % Math.max(1, Math.floor(metrics.length / 40)) === 0
+          ),
+        };
+        this.presets = this.findPresets(metrics);
+        this.selectedThreshold = best ? best.th : null;
+        this.message.success(
+          `Tuning finalizado. Marcados: ${best?.marked || 0}`
+        );
+      } catch {
+        this.message.error("Error al ejecutar tuning");
+      } finally {
+        this.tuningLoading = false;
+      }
+    },
+    async applyPreset(kind) {
+      const p = this.presets[kind];
+      if (!p) return;
+      this.selectedThreshold = p.th;
+      await this.applySelected();
+    },
+    async applySelected() {
+      if (!this.courseId || this.selectedThreshold == null) return;
+      this.applyingTune = true;
+      try {
+        const payload = {
+          threshold: Number(this.selectedThreshold),
+          note: "applied_from_ui",
+        };
+        const r = await iforestEvalService.applyThreshold(
+          this.courseId,
+          payload
+        );
+        this.message.success(
+          `Umbral aplicado: ${this.selectedThreshold.toFixed(4)}`
+        );
+        this.tuningOpen = false;
+        await this.onDetect();
+      } catch {
+        this.message.error("No se pudo aplicar el umbral");
+      } finally {
+        this.applyingTune = false;
+      }
+    },
+    async onSendNotification(row) {
+      if (!row || !row.student_id) return;
+      this.sendingNotification = true;
+      try {
+        const payload = {
+          title: "Alerta académica",
+          body: `Hola ${row.studentName || "Estudiante"}, riesgo detectado: ${(
+            row.risk_rank01 ?? 0
+          ).toFixed(2)}`,
+          data: { studentId: String(row.student_id), screen: "risk" },
+        };
+        await mobileNotificationsService.sendToStudent(row.student_id, payload);
+        this.message.success("Notificación enviada");
+      } catch (e) {
+        this.message.error("No se pudo enviar la notificación");
+      } finally {
+        this.sendingNotification = false;
+      }
+    },
   },
+
   async created() {
     this.message = useMessage();
     this.buildColumns();
     await this.loadCourses();
+
     try {
       const hlt = await riskService.health();
       if (hlt?.threshold) this.meta.threshold = hlt.threshold;
       if (hlt?.contamination) this.meta.contamination = hlt.contamination;
-      if (hlt?.version) this.meta.version = hlt.version;
+      if (hlt?.version) {
+        this.meta.version = hlt.version;
+        const d = parseIfVersion(hlt.version);
+        this.staleDays = daysSince(d);
+        this.suggestTrain = this.staleDays != null && this.staleDays >= 14;
+      }
     } catch {}
+
     if (this.courseId) await this.onDetect();
   },
 };

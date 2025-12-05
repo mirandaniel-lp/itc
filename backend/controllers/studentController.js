@@ -55,6 +55,7 @@ export const createStudent = async (req, res) => {
         placeofbirth: req.body.placeofbirth,
         phone: req.body.phone,
         gender: req.body.gender,
+        email: req.body.email || null,
         status: true,
       },
     });
@@ -66,20 +67,19 @@ export const createStudent = async (req, res) => {
 
 export const updateStudent = async (req, res) => {
   const { id } = req.params;
-
   try {
     const existingStudent = await prisma.student.findUnique({
       where: { id: BigInt(id) },
     });
-
     if (!existingStudent) {
       return res.status(404).json({ error: "Estudiante no encontrado." });
     }
-
-    const imagePath = req.file
-      ? `/uploads/${req.file.filename}`
-      : existingStudent.image;
-
+    let imagePath = existingStudent.image;
+    if (req.body.remove_image === "true") {
+      imagePath = null;
+    } else if (req.file) {
+      imagePath = `/uploads/${req.file.filename}`;
+    }
     const updatedStudent = await prisma.student.update({
       where: { id: BigInt(id) },
       data: {
@@ -88,13 +88,15 @@ export const updateStudent = async (req, res) => {
         name: req.body.name,
         ci: req.body.ci,
         image: imagePath,
-        dateofbirth: new Date(req.body.dateofbirth),
+        dateofbirth: req.body.dateofbirth
+          ? new Date(req.body.dateofbirth)
+          : existingStudent.dateofbirth,
         placeofbirth: req.body.placeofbirth,
         phone: req.body.phone,
         gender: req.body.gender,
+        email: req.body.email ?? undefined,
       },
     });
-
     res.json({ student: serialize(updatedStudent) });
   } catch (err) {
     res.status(400).json({ error: "No se pudo actualizar estudiante." });

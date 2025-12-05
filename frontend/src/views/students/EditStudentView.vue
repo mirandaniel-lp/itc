@@ -58,28 +58,11 @@
                 />
               </n-form-item>
 
-              <n-form-item
-                label="Lugar de Nacimiento"
-                path="placeofbirth_department"
-              >
-                <n-select
-                  v-model:value="form.placeofbirth_department"
-                  :options="departmentsOptions"
-                  size="large"
-                  placeholder="Seleccione departamento o Extranjero"
-                  @update:value="onChangeDepartment"
-                />
-              </n-form-item>
-
-              <n-form-item
-                v-if="form.placeofbirth_department === 'EXTRANJERO'"
-                label="País / Ciudad"
-                path="placeofbirth_other"
-              >
+              <n-form-item label="Email" path="email">
                 <n-input
-                  v-model:value="form.placeofbirth_other"
+                  v-model:value="form.email"
                   size="large"
-                  placeholder="Ej: Perú, Lima"
+                  placeholder="tu@email.com"
                   clearable
                 />
               </n-form-item>
@@ -113,25 +96,92 @@
                   placeholder="Seleccione fecha"
                 />
               </n-form-item>
+
+              <n-form-item
+                label="Lugar de Nacimiento"
+                path="placeofbirth_department"
+              >
+                <n-select
+                  v-model:value="form.placeofbirth_department"
+                  :options="departmentsOptions"
+                  size="large"
+                  placeholder="Seleccione departamento o Extranjero"
+                  @update:value="onChangeDepartment"
+                />
+              </n-form-item>
+
+              <n-form-item
+                v-if="form.placeofbirth_department === 'EXTRANJERO'"
+                label="País / Ciudad"
+                path="placeofbirth_other"
+              >
+                <n-input
+                  v-model:value="form.placeofbirth_other"
+                  size="large"
+                  placeholder="Ej: Perú, Lima"
+                  clearable
+                />
+              </n-form-item>
             </div>
 
             <n-form-item label="Fotografía">
-              <n-upload
-                :file-list="fileList"
-                :max="1"
-                accept="image/png,image/jpeg"
-                :default-upload="false"
-                :on-before-upload="beforeUpload"
-                @change="onUploadChange"
+              <div
+                class="grid gap-6 lg:grid-cols-[200px,1fr] items-start w-full"
               >
-                <n-upload-dragger>
-                  <div class="text-center">
-                    <div class="text-sm text-gray-300">
-                      Haz clic o arrastra una imagen (JPG/PNG, máx. 1)
+                <div class="flex justify-center">
+                  <div
+                    class="relative w-48 h-48 rounded-xl overflow-hidden ring-1 ring-[#334155] bg-[#0b1220] flex items-center justify-center"
+                  >
+                    <img
+                      v-if="previewUrl"
+                      :src="previewUrl"
+                      class="w-full h-full object-cover"
+                    />
+                    <div v-else class="text-slate-400">Sin imagen</div>
+                    <div
+                      v-if="uploading"
+                      class="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-end"
+                    >
+                      <div class="w-full h-1.5 bg-white/10">
+                        <div
+                          class="h-1.5 bg-[#3b82f6] transition-all"
+                          :style="{ width: uploadPct + '%' }"
+                        ></div>
+                      </div>
                     </div>
                   </div>
-                </n-upload-dragger>
-              </n-upload>
+                </div>
+
+                <div>
+                  <n-upload
+                    :file-list="fileList"
+                    :max="1"
+                    accept="image/png,image/jpeg"
+                    :default-upload="false"
+                    :show-file-list="false"
+                    :on-before-upload="beforeUpload"
+                    :on-remove="onRemoveImage"
+                    @change="onUploadChange"
+                  >
+                    <n-upload-dragger>
+                      <div class="text-center">
+                        <div class="text-sm text-gray-300">
+                          Haz clic o arrastra una imagen (JPG/PNG, máx. 1)
+                        </div>
+                      </div>
+                    </n-upload-dragger>
+                  </n-upload>
+                  <div class="mt-3 flex gap-2">
+                    <n-button
+                      size="small"
+                      tertiary
+                      @click="onRemoveImage"
+                      v-if="fileList.length || previewUrl"
+                      >Quitar</n-button
+                    >
+                  </div>
+                </div>
+              </div>
             </n-form-item>
 
             <div class="mt-8 flex justify-center gap-3">
@@ -142,7 +192,12 @@
                 @click="$router.push('/students')"
                 >Volver</n-button
               >
-              <n-button type="primary" strong size="large" @click="submit"
+              <n-button
+                type="primary"
+                strong
+                size="large"
+                @click="submit"
+                :loading="uploading"
                 >Actualizar</n-button
               >
             </div>
@@ -200,11 +255,16 @@ export default {
       formRef: null,
       message: null,
       fileList: [],
+      previewUrl: null,
+      remove_image: false,
+      uploading: false,
+      uploadPct: 0,
       form: {
         name: "",
         last_name: "",
         second_last_name: "",
         ci: "",
+        email: "",
         phone: "",
         gender: null,
         dateofbirth: null,
@@ -312,6 +372,13 @@ export default {
             trigger: ["blur", "input"],
           },
         ],
+        email: [
+          {
+            validator: (_, v) => !v || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v),
+            message: "Email inválido",
+            trigger: ["blur", "input"],
+          },
+        ],
         phone: [
           { required: true, message: "Teléfono requerido", trigger: "blur" },
           {
@@ -322,13 +389,6 @@ export default {
         ],
         gender: [
           { required: true, message: "Seleccione género", trigger: "change" },
-        ],
-        dateofbirth: [
-          {
-            required: true,
-            message: "Seleccione fecha válida",
-            trigger: "change",
-          },
         ],
         placeofbirth_department: [
           {
@@ -370,6 +430,16 @@ export default {
     },
     onUploadChange({ fileList }) {
       this.fileList = fileList;
+      const f = fileList[0]?.file;
+      this.previewUrl = f ? URL.createObjectURL(f) : this.previewUrl;
+      if (f) this.remove_image = false;
+      this.uploadPct = 0;
+    },
+    onRemoveImage() {
+      this.fileList = [];
+      this.previewUrl = null;
+      this.remove_image = true;
+      this.uploadPct = 0;
     },
     normalizeDate(v) {
       return typeof v === "number" ? v : v ? new Date(v).getTime() : null;
@@ -384,23 +454,16 @@ export default {
           last_name: s.last_name || "",
           second_last_name: s.second_last_name || "",
           ci: s.ci || "",
+          email: s.email || "",
           phone: s.phone || "",
           gender: s.gender || null,
           dateofbirth: this.normalizeDate(s.dateofbirth),
           placeofbirth_department: isDept ? pob : "EXTRANJERO",
           placeofbirth_other: isDept ? "" : s.placeofbirth || "",
         };
-        if (s.image) {
-          this.fileList = [
-            {
-              id: "current",
-              name: "actual",
-              status: "finished",
-              url: s.image,
-              type: "image/*",
-            },
-          ];
-        }
+        this.previewUrl = s.image ? `http://localhost:3000${s.image}` : null;
+        this.fileList = [];
+        this.remove_image = !s.image;
       } catch {
         this.message?.error("Estudiante no encontrado.");
         this.$router.push("/students");
@@ -414,6 +477,7 @@ export default {
         fd.append("last_name", this.form.last_name);
         fd.append("second_last_name", this.form.second_last_name);
         if (this.form.ci) fd.append("ci", this.form.ci);
+        if (this.form.email) fd.append("email", this.form.email);
         fd.append("phone", this.form.phone);
         fd.append("gender", this.form.gender);
         if (this.form.dateofbirth)
@@ -427,11 +491,22 @@ export default {
             : this.form.placeofbirth_department;
         fd.append("placeofbirth", pob || "");
         const file = this.fileList[0]?.file;
-        if (file) fd.append("image", file);
-        await StudentService.update(this.$route.params.id, fd);
+        if (file) {
+          fd.append("image", file);
+          this.remove_image = false;
+        }
+        if (this.remove_image) fd.append("remove_image", "true");
+        this.uploading = true;
+        await StudentService.update(
+          this.$route.params.id,
+          fd,
+          (p) => (this.uploadPct = p)
+        );
+        this.uploading = false;
         this.message?.success("Estudiante actualizado.");
         this.$router.push("/students");
       } catch {
+        this.uploading = false;
         this.message?.error("Error al actualizar estudiante.");
       }
     },

@@ -3,7 +3,10 @@ import { z } from "zod";
 
 const prisma = new PrismaClient();
 
-const patchSchema = z.object({ phone: z.string().min(6).max(20).optional() });
+const patchSchema = z.object({
+  phone: z.string().min(6).max(20).optional(),
+  email: z.string().email().optional(),
+});
 
 function imgUrl(image) {
   if (!image) return null;
@@ -19,6 +22,7 @@ export async function me(req, res) {
     return res
       .status(404)
       .json({ ok: false, message: "No encontrado", code: "NOT_FOUND" });
+
   return res.json({
     ok: true,
     student: {
@@ -29,6 +33,15 @@ export async function me(req, res) {
       ci: s.ci || "",
       phone: s.phone,
       gender: s.gender,
+      status: s.status,
+      appEnabled: s.app_enabled,
+      appUsername: s.app_username,
+      email: s.email || "",
+      birthDate: s.dateofbirth
+        ? s.dateofbirth.toISOString().slice(0, 10)
+        : null,
+      placeOfBirth: s.placeofbirth || "",
+      createdAt: s.created_at ? s.created_at.toISOString() : null,
       imageUrl: imgUrl(s.image),
     },
   });
@@ -42,12 +55,16 @@ export async function patchProfile(req, res) {
       message: "Datos inválidos",
       code: "VALIDATION_ERROR",
     });
+
   const data = {};
   if (parse.data.phone !== undefined) data.phone = parse.data.phone;
+  if (parse.data.email !== undefined) data.email = parse.data.email;
+
   const updated = await prisma.student.update({
     where: { id: BigInt(req.studentId) },
     data,
   });
+
   return res.json({
     ok: true,
     student: {
@@ -59,6 +76,16 @@ export async function patchProfile(req, res) {
       phone: updated.phone,
       gender: updated.gender,
       imageUrl: imgUrl(updated.image),
+      placeOfBirth: updated.placeofbirth || "",
+      birthDate: updated.dateofbirth
+        ? updated.dateofbirth.toISOString().slice(0, 10)
+        : null,
+      email: updated.email || "",
+      appUsername: updated.app_username || "",
+      appEnabled: updated.app_enabled,
+      status: updated.status,
+      createdAt: updated.created_at ? updated.created_at.toISOString() : null,
+      updatedAt: updated.updated_at ? updated.updated_at.toISOString() : null,
     },
   });
 }

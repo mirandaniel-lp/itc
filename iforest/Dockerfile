@@ -8,6 +8,6 @@ RUN pip install --no-cache-dir \
     scikit-learn pandas numpy joblib pydantic
 
 WORKDIR /app
-COPY app.py train_iforest.py make_synth.py ./
+COPY app.py train_iforest.py ./
 
-CMD ["uvicorn","app:app","--host","0.0.0.0","--port","8021"]
+CMD ["uvicorn","app:app","--host","0.0.0.0","--port","8021","--reload"]

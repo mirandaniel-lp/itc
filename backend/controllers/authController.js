@@ -36,8 +36,19 @@ export const login = async (req, res) => {
     const token = jwt.sign(
       { userId: user.id, roleId: user.roleId },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "8h" }
     );
+    await prisma.loginSession.create({
+      data: {
+        userId: user.id,
+        ip:
+          req.ip ||
+          (req.headers["x-forwarded-for"] || "").split(",")[0] ||
+          null,
+        userAgent: req.headers["user-agent"] ?? null,
+        startedAt: new Date(),
+      },
+    });
     res.cookie("token", token, { httpOnly: true });
     res.json({ message: "Inicio de sesión exitoso.", token });
   } catch (err) {
@@ -67,7 +78,18 @@ export const getUser = async (req, res) => {
   }
 };
 
-export const logout = (req, res) => {
-  res.clearCookie("token");
-  res.json({ message: "Sesión cerrada correctamente." });
+export const logout = async (req, res) => {
+  try {
+    const userId = req.user?.userId ?? null;
+    if (userId) {
+      await prisma.loginSession.updateMany({
+        where: { userId, endedAt: null },
+        data: { endedAt: new Date(), updatedBy: userId },
+      });
+    }
+    res.clearCookie("token");
+    res.json({ message: "Sesión cerrada correctamente." });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 };

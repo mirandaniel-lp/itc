@@ -22,6 +22,8 @@ import {
   teacherProfile,
   updateTeacherProfile,
   changeTeacherPin,
+  studentAttendances,
+  studentGrades,
 } from "../controllers/teacherAppController.js";
 
 const router = Router();
@@ -70,6 +72,17 @@ router.get(
   authenticateTeacher,
   attendanceAllowed
 );
+router.get(
+  "/courses/:courseId/students/:studentId/attendances",
+  authenticateTeacher,
+  studentAttendances
+);
+router.get(
+  "/courses/:courseId/students/:studentId/grades",
+  authenticateTeacher,
+  studentGrades
+);
+
 router.get("/attendance/:courseId/meta", authenticateTeacher, attendanceMeta);
 router.get("/schedule/weekly", authenticateTeacher, weeklySchedule);
 router.get("/profile", authenticateTeacher, teacherProfile);

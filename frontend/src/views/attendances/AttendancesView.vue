@@ -1,25 +1,25 @@
 <template>
   <app-layout>
     <div class="mx-auto max-w-6xl p-6 md:p-8 space-y-6">
-      <div class="flex items-center justify-between">
+      <div class="flex items-center justify-between gap-4">
         <div>
           <h1 class="text-3xl md:text-4xl font-extrabold">Asistencias</h1>
-          <p class="text-sm text-white/60">{{ formattedDate }}</p>
+          <p class="text-sm text-white/70">{{ formattedDate }}</p>
         </div>
         <div class="flex gap-3">
           <n-select
             v-model:value="courseId"
             :options="courseOptions"
             placeholder="Seleccionar curso"
-            class="w-72"
-            size="small"
+            size="large"
+            class="w-80"
             virtual-scroll
           />
           <n-date-picker
             v-model:formatted-value="date"
             value-format="yyyy-MM-dd"
             type="date"
-            size="small"
+            size="large"
             clearable
             placeholder="Selecciona una fecha"
             :disabled="!courseId || !dateMin"
@@ -76,15 +76,17 @@
             :options="statusOptions"
             placeholder="Selecciona un estado..."
             class="w-64"
-            size="small"
+            size="large"
             :disabled="!courseId || !date"
           />
           <n-button
-            size="small"
+            size="large"
+            secondary
             :disabled="!massStatus || !courseId || !date"
             @click="applyMass"
-            >Aplicar a todos</n-button
           >
+            Aplicar a todos
+          </n-button>
         </div>
       </div>
 
@@ -169,11 +171,13 @@
         <div class="p-4 border-t border-white/10 flex justify-end">
           <n-button
             type="primary"
+            size="large"
             :loading="saving"
             :disabled="!courseId || !date"
             @click="save"
-            >Guardar</n-button
           >
+            Guardar
+          </n-button>
         </div>
       </div>
     </div>
@@ -184,7 +188,10 @@
 import AppLayout from "@/layouts/AppLayout.vue";
 import { ref, computed, onMounted, watch } from "vue";
 import axios from "axios";
+import { useMessage } from "naive-ui";
 import attendanceService from "@/services/attendanceService";
+
+const message = useMessage();
 
 const courseId = ref(null);
 const date = ref(null);
@@ -211,10 +218,18 @@ const totals = computed(() => ({
   sinMarcar: roster.value.filter((r) => !r.status).length,
 }));
 
+function parseYMDToLocalDate(ymd) {
+  const [y, m, d] = String(ymd || "")
+    .split("-")
+    .map((n) => parseInt(n, 10));
+  if (!y || !m || !d) return null;
+  return new Date(y, m - 1, d, 0, 0, 0, 0);
+}
+
 const formattedDate = computed(() => {
   if (!date.value) return "Selecciona una fecha";
-  const d = new Date(date.value);
-  if (Number.isNaN(d.getTime())) return "Selecciona una fecha";
+  const d = parseYMDToLocalDate(date.value);
+  if (!d || Number.isNaN(d.getTime())) return "Selecciona una fecha";
   return d.toLocaleDateString("es-ES", {
     weekday: "long",
     year: "numeric",
@@ -222,6 +237,18 @@ const formattedDate = computed(() => {
     day: "numeric",
   });
 });
+
+function longDate(ymd) {
+  const d = parseYMDToLocalDate(ymd);
+  return d
+    ? d.toLocaleDateString("es-ES", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : ymd;
+}
 
 function debounce(fn, ms) {
   let t;
@@ -323,6 +350,13 @@ async function save() {
     }));
     await attendanceService.saveGrid(courseId.value, date.value, rows);
     await loadRoster();
+    message.success(
+      `Se guardó la asistencia del día ${longDate(date.value)} con éxito.`
+    );
+  } catch (e) {
+    message.error(
+      e?.response?.data?.error || "No se pudo guardar la asistencia."
+    );
   } finally {
     saving.value = false;
   }

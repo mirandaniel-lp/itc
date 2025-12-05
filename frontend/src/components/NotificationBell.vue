@@ -7,8 +7,15 @@
     </n-badge>
 
     <n-drawer v-model:show="open" :width="drawerWidth" placement="right">
-      <n-drawer-content :native-scrollbar="false">
-        <div class="flex items-center justify-between pb-3">
+      <n-drawer-content
+        :native-scrollbar="false"
+        :body-content-style="{
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100%',
+        }"
+      >
+        <div class="flex items-center justify-between pb-3 shrink-0">
           <div class="text-base font-extrabold">Notificaciones</div>
           <div class="flex items-center gap-2">
             <n-button size="small" tertiary @click="refresh">
@@ -31,7 +38,7 @@
           </div>
         </div>
 
-        <n-scrollbar style="max-height: 70vh">
+        <n-scrollbar class="flex-1 min-h-0">
           <div v-if="!state.ready" class="py-6 text-sm text-gray-400">
             Cargando…
           </div>
@@ -102,8 +109,8 @@
                                 </div>
                                 <div class="text-xs text-gray-400">
                                   {{ st.ci ? "CI " + st.ci : "" }}
-                                  <span v-if="st.ci">·</span>
-                                  Riesgo {{ fmtPct(st.risk_score01) }}
+                                  <span v-if="st.ci">·</span> Riesgo
+                                  {{ fmtPct(st.risk_score01) }}
                                 </div>
                                 <div class="mt-1 flex gap-1 flex-wrap">
                                   <n-tag
@@ -132,9 +139,8 @@
                                 tertiary
                                 type="primary"
                                 @click="readOne(it.id)"
+                                >Leer</n-button
                               >
-                                Leer
-                              </n-button>
                             </div>
                           </div>
                         </div>

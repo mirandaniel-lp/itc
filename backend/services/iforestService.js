@@ -15,6 +15,27 @@ function axiosErr(e) {
   throw err;
 }
 
+function risk01FromScore(score, threshold, sminArg = null) {
+  const s = Number(score);
+  const t2 = Number(threshold);
+  if (!Number.isFinite(s) || !Number.isFinite(t2)) return 0;
+  if (sminArg == null) {
+    const scale = Math.abs(t2) + 1e-9;
+    const r = (t2 - s) / scale;
+    if (!isFinite(r) || isNaN(r)) return 0;
+    if (r < 0) return 0;
+    if (r > 1) return 1;
+    return r;
+  }
+  const diff = t2 - Number(sminArg);
+  const denom = diff !== 0 ? diff : 1.0;
+  let r = (t2 - s) / denom;
+  if (!isFinite(r) || isNaN(r)) return 0;
+  if (r < 0) return 0;
+  if (r > 1) return 1;
+  return r;
+}
+
 export async function getHealth() {
   try {
     const { data } = await axios.get(`${iforestUrl()}/health`);
@@ -30,7 +51,38 @@ export async function predictRows(rows) {
     const { data } = await axios.post(`${iforestUrl()}/predict`, payload, {
       headers: { "Content-Type": "application/json" },
     });
-    return data;
+    const t = data?.threshold;
+    const scores = (data?.items || []).map((it) => Number(it.score));
+    const smin = scores.length ? Math.min(...scores) : null;
+
+    function risk01FromScore(score, threshold, sminArg = null) {
+      const s = Number(score);
+      const t2 = Number(threshold);
+      if (!Number.isFinite(s) || !Number.isFinite(t2)) return 0;
+      if (sminArg == null) {
+        const scale = Math.abs(t2) + 1e-9;
+        const r = (t2 - s) / scale;
+        if (!isFinite(r) || isNaN(r)) return 0;
+        if (r < 0) return 0;
+        if (r > 1) return 1;
+        return r;
+      }
+      const denom = t2 - Number(sminArg) !== 0 ? t2 - Number(sminArg) : 1.0;
+      let r = (t2 - s) / denom;
+      if (!isFinite(r) || isNaN(r)) return 0;
+      if (r < 0) return 0;
+      if (r > 1) return 1;
+      return r;
+    }
+
+    const items = (data?.items || []).map((it) => ({
+      ...it,
+      risk_score01:
+        it.risk_score01 == null || it.risk_score01 === 0
+          ? risk01FromScore(it.score, t, smin)
+          : it.risk_score01,
+    }));
+    return { ...data, items };
   } catch (e) {
     axiosErr(e);
   }

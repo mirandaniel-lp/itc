@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 import AuthService from "@/services/authService";
 import { ROLES } from "@/constants/roles";
+import { decodeJwt } from "@/utils/jwt";
 
 let cachedUser = null;
 
@@ -14,6 +15,7 @@ function isAllowed(roleName, path) {
   if (roleName === ROLES.GERENTE)
     return (
       path === "/home" ||
+      path === "/profile" ||
       path.startsWith("/students") ||
       path.startsWith("/enrollments") ||
       path.startsWith("/courses") ||
@@ -26,11 +28,13 @@ function isAllowed(roleName, path) {
       path.startsWith("/attendances") ||
       path.startsWith("/schedules") ||
       path.startsWith("/risks") ||
-      path.startsWith("/grades")
+      path.startsWith("/grades") ||
+      path.startsWith("/audit")
     );
   if (roleName === ROLES.SECRETARIA)
     return (
       path === "/home" ||
+      path === "/profile" ||
       path.startsWith("/students") ||
       path.startsWith("/enrollments") ||
       path.startsWith("/attendances") ||
@@ -57,7 +61,11 @@ const routes = [
     name: "register",
     component: () => import("@/views/authentication/RegisterView.vue"),
   },
-
+  {
+    path: "/profile",
+    name: "profile",
+    component: () => import("@/views/profile/UserProfileView.vue"),
+  },
   {
     path: "/users",
     name: "users",
@@ -69,7 +77,6 @@ const routes = [
     component: () => import("@/views/users/EditUserView.vue"),
     props: true,
   },
-
   {
     path: "/students",
     name: "students",
@@ -195,6 +202,11 @@ const routes = [
     component: () => import("@/views/schedules/ScheduleDesignerView.vue"),
   },
   {
+    path: "/audit",
+    name: "audit",
+    component: () => import("@/views/audit/AuditView.vue"),
+  },
+  {
     path: "/teacher/login",
     name: "teacher-login",
     component: () => import("@/views/authentication/TeacherLoginView.vue"),
@@ -278,15 +290,18 @@ router.beforeEach(async (to, from, next) => {
     return next("/restricted");
   }
 
-  try {
-    if (!cachedUser) {
+  const payload = decodeJwt(token) || {};
+  const currentUserId = payload.userId;
+
+  if (!cachedUser || cachedUser.id !== currentUserId) {
+    try {
       const { user } = await AuthService.getUser();
       cachedUser = user;
+    } catch {
+      localStorage.removeItem("token");
+      cachedUser = null;
+      return next("/login");
     }
-  } catch {
-    localStorage.removeItem("token");
-    cachedUser = null;
-    return next("/login");
   }
 
   const roleName = cachedUser?.role?.name || "";

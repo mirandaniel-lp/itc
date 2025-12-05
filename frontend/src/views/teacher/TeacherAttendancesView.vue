@@ -127,6 +127,20 @@ const meta = ref({
   holidays: [],
 });
 
+const normalizeDay = (s) => {
+  if (!s) return s;
+  return s
+    .toString()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .trim();
+};
+
+const normalizedMetaWeekdays = computed(() =>
+  (meta.value.weekdays || []).map((w) => normalizeDay(w))
+);
+
 const summary = computed(() => {
   const s = { presentes: 0, ausentes: 0, tarde: 0, licencia: 0 };
   rows.value.forEach((r) => {
@@ -162,7 +176,7 @@ const disableDate = (ts) => {
     "SABADO",
   ];
   const w = days[d.getDay()];
-  if (!meta.value.weekdays.includes(w)) return true;
+  if (!normalizedMetaWeekdays.value.includes(w)) return true;
   const key = d.toISOString().slice(0, 10);
   if ((meta.value.holidays || []).includes(key)) return true;
   return false;
@@ -217,7 +231,13 @@ async function loadMeta() {
     };
     return;
   }
-  meta.value = await TeacherSessionService.getAttendanceMeta(courseId.value);
+  const m = await TeacherSessionService.getAttendanceMeta(courseId.value);
+  meta.value = {
+    start_date: m.start_date ?? m.startDate ?? meta.value.start_date,
+    end_date: m.end_date ?? m.endDate ?? meta.value.end_date,
+    weekdays: (m.weekdays || []).map((w) => normalizeDay(w)),
+    holidays: m.holidays || [],
+  };
 }
 
 async function load() {
@@ -263,3 +283,5 @@ async function save() {
 
 onMounted(load);
 </script>
+
+<style scoped></style>

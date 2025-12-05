@@ -11,6 +11,16 @@ const toBigInt = (v) => {
   return BigInt(asStr);
 };
 
+const normalizeDay = (s) => {
+  if (!s) return s;
+  return s
+    .toString()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .trim();
+};
+
 const weekdayFromTs = (d) => {
   const i = new Date(d).getDay();
   return [
@@ -29,10 +39,16 @@ const startOfDay = (d) => {
   x.setHours(0, 0, 0, 0);
   return x;
 };
+
 const nextDay = (d) => {
   const x = new Date(d);
   x.setDate(x.getDate() + 1);
   return x;
+};
+
+const parseDateMiddayUTC = (dateStr) => {
+  if (!dateStr) return null;
+  return new Date(dateStr + "T12:00:00Z");
 };
 
 const isAttendanceAllowedInternal = async (course, dateObj) => {
@@ -41,29 +57,46 @@ const isAttendanceAllowedInternal = async (course, dateObj) => {
     (!course.start_date || d0 >= startOfDay(course.start_date)) &&
     (!course.end_date || d0 <= startOfDay(course.end_date));
   if (!inRange)
-    return { allowed: false, reason: "Fecha fuera del rango del curso." };
+    return {
+      allowed: false,
+      reason: "Fecha fuera del rango del curso.",
+      debug: { inRange },
+    };
 
   const w = weekdayFromTs(d0);
-  const hasDay = (course.schedules || []).some((s) => s.weekday === w);
+  const courseWeekdaysRaw = (course.schedules || []).map((s) => s.weekday);
+  const courseWeekdaysNorm = (course.schedules || []).map((s) =>
+    normalizeDay(s.weekday)
+  );
+  const hasDay = courseWeekdaysNorm.includes(normalizeDay(w));
+  const feriado = await prisma.academicHoliday.findFirst({
+    where: { date: { gte: d0, lt: nextDay(d0) } },
+  });
   if (!hasDay)
     return {
       allowed: false,
       reason: "Día no habilitado según el horario del curso.",
+      debug: { requestedWeekday: w, courseWeekdaysRaw, courseWeekdaysNorm },
+    };
+  if (feriado)
+    return {
+      allowed: false,
+      reason: "Feriado académico.",
+      debug: { feriado: feriado.name, feriadoDate: feriado.date },
     };
 
-  const feriado = await prisma.academicHoliday.findFirst({
-    where: { date: { gte: d0, lt: nextDay(d0) } },
-  });
-  if (feriado) return { allowed: false, reason: "Feriado académico." };
-
-  return { allowed: true, reason: null };
+  return {
+    allowed: true,
+    reason: null,
+    debug: { requestedWeekday: w, courseWeekdaysRaw, courseWeekdaysNorm },
+  };
 };
 
 export const attendanceAllowed = async (req, res) => {
   try {
     const teacherId = toBigInt(req.teacherId);
     const courseId = toBigInt(req.params.courseId);
-    const date = req.query.date ? new Date(req.query.date) : null;
+    const date = req.query.date ? parseDateMiddayUTC(req.query.date) : null;
 
     const course = await prisma.course.findFirst({
       where: { id: courseId, teacherId, status: true },
@@ -73,12 +106,27 @@ export const attendanceAllowed = async (req, res) => {
     if (!date) return res.status(400).json({ error: "Fecha inválida." });
 
     const check = await isAttendanceAllowedInternal(course, date);
+
+    console.log("attendanceAllowed debug:", {
+      courseId: courseId?.toString?.() ?? courseId,
+      date: date.toISOString().slice(0, 10),
+      courseSchedules: (course.schedules || []).map((s) => ({
+        id: s.id?.toString?.(),
+        weekday: s.weekday,
+        start_time: s.start_time,
+        end_time: s.end_time,
+      })),
+      checkDebug: check.debug,
+    });
+
     res.json({
       allowed: check.allowed,
       reason: check.reason,
       weekday: weekdayFromTs(date),
+      debug: check.debug,
     });
-  } catch {
+  } catch (err) {
+    console.error("attendanceAllowed error:", err);
     res.status(500).json({ error: "Error al validar fecha." });
   }
 };
@@ -98,7 +146,7 @@ export const attendanceMeta = async (req, res) => {
       meta: {
         start_date: course.start_date,
         end_date: course.end_date,
-        weekdays: (course.schedules || []).map((s) => s.weekday),
+        weekdays: (course.schedules || []).map((s) => normalizeDay(s.weekday)),
         holidays: holidays.map((h) => h.date.toISOString().slice(0, 10)),
       },
     });
@@ -155,6 +203,7 @@ export const teacherCourses = async (req, res) => {
         enrollments: true,
         activities: true,
         term: true,
+        schedules: true,
       },
       orderBy: { start_date: "desc" },
     });
@@ -170,12 +219,45 @@ export const teacherActivities = async (req, res) => {
     const courseId = req.query.courseId
       ? toBigInt(req.query.courseId)
       : undefined;
+
+    if (courseId) {
+      const course = await prisma.course.findFirst({
+        where: { id: courseId, teacherId, status: true },
+      });
+      if (!course)
+        return res.status(404).json({
+          error: "Curso no encontrado o no perteneciente al docente.",
+        });
+
+      const activities = await prisma.activity.findMany({
+        where: { courseId, status: true },
+        include: { course: true },
+        orderBy: { created_at: "desc" },
+      });
+
+      return res.json({ activities: serialize(activities) });
+    }
+
+    const taughtCourses = await prisma.course.findMany({
+      where: { teacherId, status: true },
+      select: { id: true },
+    });
+
+    const courseIds = taughtCourses.map((c) => toBigInt(c.id));
+
     const activities = await prisma.activity.findMany({
-      where: { teacherId, status: true, ...(courseId ? { courseId } : {}) },
+      where: {
+        status: true,
+        OR: [
+          { teacherId },
+          courseIds.length ? { courseId: { in: courseIds } } : undefined,
+        ].filter(Boolean),
+      },
       include: { course: true },
       orderBy: { created_at: "desc" },
     });
-    res.json({ activities: serialize(activities) });
+
+    return res.json({ activities: serialize(activities) });
   } catch {
     res
       .status(500)
@@ -215,10 +297,16 @@ export const updateActivity = async (req, res) => {
     const teacherId = toBigInt(req.teacherId);
     const id = toBigInt(req.params.id);
     const payload = req.body || {};
-    const act = await prisma.activity.findFirst({
-      where: { id, teacherId, status: true },
+    const act = await prisma.activity.findUnique({ where: { id } });
+    if (!act || !act.status)
+      return res.status(404).json({ error: "Actividad no encontrada." });
+    const course = await prisma.course.findUnique({
+      where: { id: toBigInt(act.courseId) },
     });
-    if (!act)
+    const courseBelongsToTeacher =
+      course && toBigInt(course.teacherId) === teacherId;
+    const activityOwnsTeacher = toBigInt(act.teacherId) === teacherId;
+    if (!activityOwnsTeacher && !courseBelongsToTeacher)
       return res.status(404).json({ error: "Actividad no encontrada." });
     const updated = await prisma.activity.update({
       where: { id },
@@ -240,10 +328,16 @@ export const deleteActivity = async (req, res) => {
   try {
     const teacherId = toBigInt(req.teacherId);
     const id = toBigInt(req.params.id);
-    const act = await prisma.activity.findFirst({
-      where: { id, teacherId, status: true },
+    const act = await prisma.activity.findUnique({ where: { id } });
+    if (!act || !act.status)
+      return res.status(404).json({ error: "Actividad no encontrada." });
+    const course = await prisma.course.findUnique({
+      where: { id: toBigInt(act.courseId) },
     });
-    if (!act)
+    const courseBelongsToTeacher =
+      course && toBigInt(course.teacherId) === teacherId;
+    const activityOwnsTeacher = toBigInt(act.teacherId) === teacherId;
+    if (!activityOwnsTeacher && !courseBelongsToTeacher)
       return res.status(404).json({ error: "Actividad no encontrada." });
     await prisma.activity.update({ where: { id }, data: { status: false } });
     res.json({ message: "Actividad eliminada." });
@@ -256,10 +350,16 @@ export const publishActivity = async (req, res) => {
   try {
     const teacherId = toBigInt(req.teacherId);
     const id = toBigInt(req.params.id);
-    const act = await prisma.activity.findFirst({
-      where: { id, teacherId, status: true },
+    const act = await prisma.activity.findUnique({ where: { id } });
+    if (!act || !act.status)
+      return res.status(404).json({ error: "Actividad no encontrada." });
+    const course = await prisma.course.findUnique({
+      where: { id: toBigInt(act.courseId) },
     });
-    if (!act)
+    const courseBelongsToTeacher =
+      course && toBigInt(course.teacherId) === teacherId;
+    const activityOwnsTeacher = toBigInt(act.teacherId) === teacherId;
+    if (!activityOwnsTeacher && !courseBelongsToTeacher)
       return res.status(404).json({ error: "Actividad no encontrada." });
     const updated = await prisma.activity.update({
       where: { id },
@@ -275,10 +375,16 @@ export const unpublishActivity = async (req, res) => {
   try {
     const teacherId = toBigInt(req.teacherId);
     const id = toBigInt(req.params.id);
-    const act = await prisma.activity.findFirst({
-      where: { id, teacherId, status: true },
+    const act = await prisma.activity.findUnique({ where: { id } });
+    if (!act || !act.status)
+      return res.status(404).json({ error: "Actividad no encontrada." });
+    const course = await prisma.course.findUnique({
+      where: { id: toBigInt(act.courseId) },
     });
-    if (!act)
+    const courseBelongsToTeacher =
+      course && toBigInt(course.teacherId) === teacherId;
+    const activityOwnsTeacher = toBigInt(act.teacherId) === teacherId;
+    if (!activityOwnsTeacher && !courseBelongsToTeacher)
       return res.status(404).json({ error: "Actividad no encontrada." });
     const updated = await prisma.activity.update({
       where: { id },
@@ -296,14 +402,60 @@ export const courseStudents = async (req, res) => {
     const courseId = toBigInt(req.params.courseId);
     const course = await prisma.course.findFirst({
       where: { id: courseId, teacherId, status: true },
+      include: { activities: true },
     });
     if (!course) return res.status(404).json({ error: "Curso no encontrado." });
+
     const enrollments = await prisma.enrollment.findMany({
       where: { courseId, status: true },
       include: { student: true },
     });
     const students = enrollments.map((e) => e.student).filter((s) => s?.status);
-    res.json({ students: serialize(students) });
+
+    const attendanceRecords = await prisma.attendance.findMany({
+      where: { courseId },
+      select: { date: true, studentId: true, status: true },
+    });
+    const uniqueDates = new Set(
+      attendanceRecords.map((r) => new Date(r.date).toISOString().slice(0, 10))
+    );
+    const totalSessions = uniqueDates.size;
+
+    const activityIds = (course.activities || []).map((a) => a.id);
+
+    const studentsWithMetrics = await Promise.all(
+      students.map(async (s) => {
+        const presentCount = await prisma.attendance.count({
+          where: { courseId, studentId: toBigInt(s.id), status: "PRESENTE" },
+        });
+
+        let attendancePct = null;
+        if (totalSessions > 0) {
+          attendancePct = Math.round((presentCount / totalSessions) * 100);
+        }
+
+        let average = null;
+        if (activityIds.length > 0) {
+          const agg = await prisma.grade.aggregate({
+            _avg: { score: true },
+            where: {
+              activityId: { in: activityIds },
+              studentId: toBigInt(s.id),
+            },
+          });
+          const avg = agg._avg?.score ?? null;
+          average = avg !== null ? Number(Number(avg).toFixed(2)) : null;
+        }
+
+        return {
+          ...s,
+          attendancePct,
+          average,
+        };
+      })
+    );
+
+    res.json({ students: serialize(studentsWithMetrics) });
   } catch {
     res.status(500).json({ error: "Error al obtener estudiantes del curso." });
   }
@@ -313,13 +465,19 @@ export const gradesByActivity = async (req, res) => {
   try {
     const teacherId = toBigInt(req.teacherId);
     const activityId = toBigInt(req.params.activityId);
-    const act = await prisma.activity.findFirst({
-      where: { id: activityId, teacherId, status: true },
+    const act = await prisma.activity.findUnique({ where: { id: activityId } });
+    if (!act || !act.status)
+      return res.status(404).json({ error: "Actividad no encontrada." });
+    const course = await prisma.course.findUnique({
+      where: { id: toBigInt(act.courseId) },
     });
-    if (!act)
+    const courseBelongsToTeacher =
+      course && toBigInt(course.teacherId) === teacherId;
+    const activityOwnsTeacher = toBigInt(act.teacherId) === teacherId;
+    if (!activityOwnsTeacher && !courseBelongsToTeacher)
       return res.status(404).json({ error: "Actividad no encontrada." });
     const enrollments = await prisma.enrollment.findMany({
-      where: { courseId: act.courseId, status: true },
+      where: { courseId: toBigInt(act.courseId), status: true },
       include: { student: true },
     });
     const grades = await prisma.grade.findMany({
@@ -351,10 +509,16 @@ export const upsertGrades = async (req, res) => {
   try {
     const teacherId = toBigInt(req.teacherId);
     const activityId = toBigInt(req.params.activityId);
-    const act = await prisma.activity.findFirst({
-      where: { id: activityId, teacherId, status: true },
+    const act = await prisma.activity.findUnique({ where: { id: activityId } });
+    if (!act || !act.status)
+      return res.status(404).json({ error: "Actividad no encontrada." });
+    const course = await prisma.course.findUnique({
+      where: { id: toBigInt(act.courseId) },
     });
-    if (!act)
+    const courseBelongsToTeacher =
+      course && toBigInt(course.teacherId) === teacherId;
+    const activityOwnsTeacher = toBigInt(act.teacherId) === teacherId;
+    if (!activityOwnsTeacher && !courseBelongsToTeacher)
       return res.status(404).json({ error: "Actividad no encontrada." });
     const rows = Array.isArray(req.body)
       ? req.body
@@ -391,10 +555,16 @@ export const publishGrades = async (req, res) => {
   try {
     const teacherId = toBigInt(req.teacherId);
     const activityId = toBigInt(req.params.activityId);
-    const act = await prisma.activity.findFirst({
-      where: { id: activityId, teacherId, status: true },
+    const act = await prisma.activity.findUnique({ where: { id: activityId } });
+    if (!act || !act.status)
+      return res.status(404).json({ error: "Actividad no encontrada." });
+    const course = await prisma.course.findUnique({
+      where: { id: toBigInt(act.courseId) },
     });
-    if (!act)
+    const courseBelongsToTeacher =
+      course && toBigInt(course.teacherId) === teacherId;
+    const activityOwnsTeacher = toBigInt(act.teacherId) === teacherId;
+    if (!activityOwnsTeacher && !courseBelongsToTeacher)
       return res.status(404).json({ error: "Actividad no encontrada." });
     await prisma.activity.update({
       where: { id: activityId },
@@ -414,7 +584,7 @@ export const attendanceByCourseDate = async (req, res) => {
   try {
     const teacherId = toBigInt(req.teacherId);
     const courseId = toBigInt(req.params.courseId);
-    const date = req.query.date ? new Date(req.query.date) : null;
+    const date = req.query.date ? parseDateMiddayUTC(req.query.date) : null;
     const course = await prisma.course.findFirst({
       where: { id: courseId, teacherId, status: true },
     });
@@ -433,7 +603,7 @@ export const saveAttendanceByCourseDate = async (req, res) => {
   try {
     const teacherId = toBigInt(req.teacherId);
     const courseId = toBigInt(req.params.courseId);
-    const date = req.query.date ? new Date(req.query.date) : null;
+    const date = req.query.date ? parseDateMiddayUTC(req.query.date) : null;
 
     const course = await prisma.course.findFirst({
       where: { id: courseId, teacherId, status: true },
@@ -481,8 +651,8 @@ export const saveAttendanceByCourseDate = async (req, res) => {
 export const weeklySchedule = async (req, res) => {
   try {
     const teacherId = toBigInt(req.teacherId);
-    const start = req.query.start ? new Date(req.query.start) : null;
-    const end = req.query.end ? new Date(req.query.end) : null;
+    const start = req.query.start ? parseDateMiddayUTC(req.query.start) : null;
+    const end = req.query.end ? parseDateMiddayUTC(req.query.end) : null;
     const courses = await prisma.course.findMany({
       where: { teacherId, status: true },
       include: { schedules: { include: { classroom: true } } },
@@ -493,7 +663,7 @@ export const weeklySchedule = async (req, res) => {
         items.push({
           courseId: c.id.toString(),
           courseName: c.name,
-          weekday: s.weekday,
+          weekday: normalizeDay(s.weekday),
           start_time: s.start_time,
           end_time: s.end_time,
           classroom: s.classroom?.name || null,
@@ -555,5 +725,58 @@ export const changeTeacherPin = async (req, res) => {
     res.json({ message: "PIN actualizado." });
   } catch {
     res.status(400).json({ error: "No se pudo cambiar el PIN." });
+  }
+};
+
+export const studentAttendances = async (req, res) => {
+  try {
+    const teacherId = toBigInt(req.teacherId);
+    const courseId = toBigInt(req.params.courseId);
+    const studentId = toBigInt(req.params.studentId);
+
+    const course = await prisma.course.findFirst({
+      where: { id: courseId, teacherId, status: true },
+    });
+    if (!course) return res.status(404).json({ error: "Curso no válido." });
+
+    const records = await prisma.attendance.findMany({
+      where: { courseId, studentId },
+      orderBy: { date: "asc" },
+    });
+
+    res.json({ attendances: serialize(records) });
+  } catch {
+    res
+      .status(500)
+      .json({ error: "Error al obtener asistencias del estudiante." });
+  }
+};
+
+export const studentGrades = async (req, res) => {
+  try {
+    const teacherId = toBigInt(req.teacherId);
+    const courseId = toBigInt(req.params.courseId);
+    const studentId = toBigInt(req.params.studentId);
+
+    const course = await prisma.course.findFirst({
+      where: { id: courseId, teacherId, status: true },
+      include: { activities: true },
+    });
+
+    if (!course) return res.status(404).json({ error: "Curso no válido." });
+
+    const activityIds = course.activities.map((a) => a.id);
+
+    const grades = await prisma.grade.findMany({
+      where: { studentId, activityId: { in: activityIds } },
+      include: { activity: true },
+      orderBy: { activityId: "asc" },
+    });
+
+    res.json({ grades: serialize(grades) });
+  } catch {
+    res
+      .status(500)
+      .json({ error: "Error al obtener calificaciones del estudiante." });
   }
 };

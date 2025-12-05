@@ -23,7 +23,6 @@
                 placeholder="Ej: Administración I"
               />
             </n-form-item>
-
             <n-form-item label="Paralelos" path="parallels">
               <n-select
                 v-model:value="form.parallels"
@@ -35,7 +34,6 @@
                 @update:value="ensureParallels"
               />
             </n-form-item>
-
             <n-form-item label="Docente" path="teacherId">
               <n-select
                 v-model:value="form.teacherId"
@@ -44,9 +42,9 @@
                 clearable
                 size="large"
                 placeholder="Seleccione docente"
+                @update:value="triggerAllChecks"
               />
             </n-form-item>
-
             <n-form-item label="Modalidad" path="modalityId">
               <n-select
                 v-model:value="form.modalityId"
@@ -57,7 +55,6 @@
                 placeholder="Seleccione modalidad"
               />
             </n-form-item>
-
             <n-form-item label="Programa" path="programId">
               <n-select
                 v-model:value="form.programId"
@@ -68,7 +65,6 @@
                 placeholder="Seleccione programa"
               />
             </n-form-item>
-
             <n-form-item label="Periodo Académico" path="termId">
               <n-select
                 v-model:value="form.termId"
@@ -79,16 +75,15 @@
                 placeholder="Seleccione periodo"
               />
             </n-form-item>
-
             <n-form-item label="Turno" path="shift">
               <n-select
                 v-model:value="form.shift"
                 :options="shiftOptions"
                 size="large"
                 placeholder="Seleccione turno"
+                @update:value="triggerAllChecks"
               />
             </n-form-item>
-
             <n-form-item label="Cupo Máximo" path="max_capacity">
               <n-input-number
                 v-model:value="form.max_capacity"
@@ -97,7 +92,6 @@
                 placeholder="Ej: 30"
               />
             </n-form-item>
-
             <n-form-item label="Rango (3–12 meses)" path="range" :span="2">
               <n-date-picker
                 v-model:value="form.range"
@@ -107,9 +101,9 @@
                 end-placeholder="Fin"
                 :is-date-disabled="disableRangeDate"
                 clearable
+                @update:value="triggerAllChecks"
               />
             </n-form-item>
-
             <n-form-item label="Costo (Bs.)" path="cost">
               <n-input-number
                 v-model:value="form.cost"
@@ -120,7 +114,6 @@
                 placeholder="Ej: 300.0"
               />
             </n-form-item>
-
             <n-form-item label="Descripción">
               <n-input
                 v-model:value="form.description"
@@ -134,7 +127,6 @@
 
           <div class="mt-10">
             <div class="text-xl font-extrabold mb-4">Horarios por Paralelo</div>
-
             <n-tabs type="segment">
               <n-tab-pane
                 v-for="p in form.parallels"
@@ -194,39 +186,104 @@
                     <div class="col-span-3">Fin</div>
                   </div>
 
-                  <div
-                    v-for="d in weekdays"
-                    :key="d.value"
-                    class="grid grid-cols-12 gap-3 items-center mb-2"
-                  >
-                    <div class="col-span-3 flex items-center gap-3">
-                      <n-checkbox
-                        v-model:checked="scheduleMap[p][d.value].enabled"
-                        >{{ d.label }}</n-checkbox
+                  <div v-for="d in weekdays" :key="d.value" class="mb-2">
+                    <div class="grid grid-cols-12 gap-3 items-center">
+                      <div class="col-span-3 flex items-center gap-3">
+                        <n-checkbox
+                          v-model:checked="scheduleMap[p][d.value].enabled"
+                          @update:checked="onRowChanged(p, d.value)"
+                          >{{ d.label }}</n-checkbox
+                        >
+                      </div>
+                      <div class="col-span-3">
+                        <n-select
+                          v-model:value="scheduleMap[p][d.value].classroomId"
+                          :options="classroomOptions"
+                          :disabled="!scheduleMap[p][d.value].enabled"
+                          filterable
+                          placeholder="Aula"
+                          @update:value="onRowChanged(p, d.value)"
+                        />
+                      </div>
+                      <div class="col-span-3">
+                        <n-time-picker
+                          v-model:value="scheduleMap[p][d.value].start"
+                          format="HH:mm"
+                          :disabled="!scheduleMap[p][d.value].enabled"
+                          @update:value="onRowChanged(p, d.value)"
+                        />
+                      </div>
+                      <div class="col-span-3">
+                        <n-time-picker
+                          v-model:value="scheduleMap[p][d.value].end"
+                          format="HH:mm"
+                          :disabled="!scheduleMap[p][d.value].enabled"
+                          @update:value="onRowChanged(p, d.value)"
+                        />
+                      </div>
+                    </div>
+
+                    <div
+                      v-if="scheduleMap[p][d.value].enabled"
+                      class="pl-6 pr-2"
+                    >
+                      <div
+                        v-if="rowAvail(avKey(p, d.value))?.loading"
+                        class="text-xs text-gray-400 mt-1"
                       >
-                    </div>
-                    <div class="col-span-3">
-                      <n-select
-                        v-model:value="scheduleMap[p][d.value].classroomId"
-                        :options="classroomOptions"
-                        :disabled="!scheduleMap[p][d.value].enabled"
-                        filterable
-                        placeholder="Aula"
-                      />
-                    </div>
-                    <div class="col-span-3">
-                      <n-time-picker
-                        v-model:value="scheduleMap[p][d.value].start"
-                        format="HH:mm"
-                        :disabled="!scheduleMap[p][d.value].enabled"
-                      />
-                    </div>
-                    <div class="col-span-3">
-                      <n-time-picker
-                        v-model:value="scheduleMap[p][d.value].end"
-                        format="HH:mm"
-                        :disabled="!scheduleMap[p][d.value].enabled"
-                      />
+                        Verificando disponibilidad…
+                      </div>
+                      <div
+                        v-else
+                        class="flex items-center gap-2 mt-1 flex-wrap"
+                      >
+                        <n-tag
+                          v-if="rowAvail(avKey(p, d.value))?.ok"
+                          size="tiny"
+                          type="success"
+                          round
+                          >Disponible</n-tag
+                        >
+                        <n-tag
+                          v-for="iss in rowAvail(avKey(p, d.value))?.issues ||
+                          []"
+                          :key="iss"
+                          size="tiny"
+                          :type="
+                            iss === 'teacher'
+                              ? 'warning'
+                              : iss === 'classroom'
+                              ? 'error'
+                              : 'default'
+                          "
+                          round
+                          >{{
+                            iss === "teacher"
+                              ? "Docente ocupado"
+                              : iss === "classroom"
+                              ? "Aula ocupada"
+                              : "Fuera de turno"
+                          }}</n-tag
+                        >
+                        <div
+                          v-if="
+                            rowAvail(avKey(p, d.value))?.suggestions?.length
+                          "
+                          class="text-xs text-gray-300"
+                        >
+                          Sugerencias:
+                        </div>
+                        <n-button
+                          v-for="s in rowAvail(
+                            avKey(p, d.value)
+                          )?.suggestions?.slice(0, 6) || []"
+                          :key="s.start_time + '-' + s.end_time"
+                          size="tiny"
+                          tertiary
+                          @click="applySuggestion(p, d.value, s)"
+                          >{{ s.start_time }}–{{ s.end_time }}</n-button
+                        >
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -262,7 +319,7 @@
         >
           <div class="space-y-3">
             <div
-              v-for="c in created"
+              v-for="c in createdSorted"
               :key="c.id"
               class="rounded-lg border border-[#334155] p-3"
             >
@@ -272,7 +329,7 @@
               </div>
               <div class="mt-2">
                 <div
-                  v-for="s in c.schedules"
+                  v-for="s in orderSchedules(c.schedules)"
                   :key="s.id"
                   class="text-sm text-gray-300"
                 >
@@ -295,6 +352,8 @@
 </template>
 
 <script setup>
+import { useRouter } from "vue-router";
+const router = useRouter();
 import {
   NForm,
   NFormItem,
@@ -308,9 +367,10 @@ import {
   NTabPane,
   NModal,
   NCheckbox,
+  NTag,
   useMessage,
 } from "naive-ui";
-import { ref, reactive, onMounted } from "vue";
+import { ref, reactive, onMounted, computed } from "vue";
 import AppLayout from "@/layouts/AppLayout.vue";
 import CourseService from "@/services/courseService";
 import ClassroomService from "@/services/classroomService";
@@ -355,6 +415,15 @@ const weekdays = [
   { label: "Sábado", value: "SABADO" },
   { label: "Domingo", value: "DOMINGO" },
 ];
+const weekdayOrder = {
+  LUNES: 1,
+  MARTES: 2,
+  MIERCOLES: 3,
+  JUEVES: 4,
+  VIERNES: 5,
+  SABADO: 6,
+  DOMINGO: 7,
+};
 
 const shiftOptions = [
   { label: "Mañana", value: "MAÑANA" },
@@ -369,6 +438,8 @@ const termOptions = ref([]);
 const classroomOptions = ref([]);
 
 const scheduleMap = reactive({});
+const availability = reactive({});
+const timers = {};
 
 const addMonths = (ts, months) => {
   const d = new Date(ts);
@@ -456,6 +527,7 @@ const ensureParallels = () => {
   for (const k of Object.keys(scheduleMap)) {
     if (!form.parallels.includes(k)) delete scheduleMap[k];
   }
+  triggerAllChecks();
 };
 
 const selectDays = (p, days) => {
@@ -464,6 +536,7 @@ const selectDays = (p, days) => {
   for (const d of weekdays) {
     scheduleMap[p][d.value].enabled = set.has(d.value);
   }
+  triggerAllChecks();
 };
 
 const copyFirstFilledToAll = (p) => {
@@ -493,6 +566,7 @@ const copyFirstFilledToAll = (p) => {
       row.end = row.end ?? base.end;
     }
   }
+  triggerAllChecks();
 };
 
 const validateOverlaps = () => {
@@ -526,13 +600,12 @@ const validateOverlaps = () => {
   }
   for (let a = 0; a < form.parallels.length; a++) {
     for (let b = a + 1; b < form.parallels.length; b++) {
-      const pa = form.parallels[a];
-      const pb = form.parallels[b];
+      const pa = form.parallels[a],
+        pb = form.parallels[b];
       for (const d of weekdays) {
-        const ra = scheduleMap[pa][d.value];
-        const rb = scheduleMap[pb][d.value];
+        const ra = scheduleMap[pa][d.value],
+          rb = scheduleMap[pb][d.value];
         if (!(ra?.enabled && rb?.enabled)) continue;
-        if (ra.classroomId !== rb.classroomId) continue;
         const aSm =
           new Date(ra.start).getHours() * 60 + new Date(ra.start).getMinutes();
         const aEm =
@@ -558,9 +631,10 @@ const loadCatalogs = async () => {
       TermService.getAll(),
     ]
   );
-
   teacherOptions.value = (teachers || []).map((t) => ({
-    label: `${t.name} ${t.last_name ?? ""} ${t.second_last_name ?? ""}`.trim(),
+    label: `${t.name} ${t.last_name ?? ""} ${t.second_last_name ?? ""} - ${
+      t.specialty ?? ""
+    }`.trim(),
     value: t.id,
   }));
   classroomOptions.value = (classrooms || []).map((c) => ({
@@ -581,6 +655,88 @@ const loadCatalogs = async () => {
   }));
 };
 
+const avKey = (p, day) => `${p}-${day}`;
+const rowAvail = (k) => availability[k] || null;
+const parseTimeToToday = (hhmm) => {
+  const [h, m] = String(hhmm)
+    .split(":")
+    .map((n) => parseInt(n, 10));
+  const d = new Date();
+  d.setHours(h || 0, m || 0, 0, 0);
+  return +d;
+};
+
+const buildCheck = (p, day) => {
+  const row = scheduleMap[p][day];
+  if (!row?.enabled || !row.classroomId || row.start == null || row.end == null)
+    return null;
+  return {
+    id: avKey(p, day),
+    weekday: day,
+    classroomId: row.classroomId,
+    start_time: toHHMM(row.start),
+    end_time: toHHMM(row.end),
+  };
+};
+
+const onRowChanged = (p, day) => {
+  const k = avKey(p, day);
+  clearTimeout(timers[k]);
+  timers[k] = setTimeout(() => checkRow(p, day), 300);
+};
+
+const triggerAllChecks = () => {
+  for (const p of form.parallels)
+    for (const d of weekdays) onRowChanged(p, d.value);
+};
+
+const checkRow = async (p, day) => {
+  const k = avKey(p, day);
+  const c = buildCheck(p, day);
+  if (!c || !form.teacherId || !(form.range || []).length || !form.shift) {
+    availability[k] = {
+      ok: false,
+      issues: [],
+      suggestions: [],
+      loading: false,
+    };
+    return;
+  }
+  availability[k] = { ok: false, issues: [], suggestions: [], loading: true };
+  try {
+    const [sTs, eTs] = form.range;
+    const res = await CourseService.checkAvailability({
+      teacherId: form.teacherId,
+      start_date: new Date(sTs).toISOString(),
+      end_date: new Date(eTs).toISOString(),
+      shift: form.shift,
+      checks: [c],
+    });
+    const r = Array.isArray(res?.results) ? res.results[0] : null;
+    availability[k] = r
+      ? {
+          ok: r.ok,
+          issues: r.issues || [],
+          suggestions: r.suggestions || [],
+          loading: false,
+        }
+      : { ok: true, issues: [], suggestions: [], loading: false };
+  } catch {
+    availability[k] = {
+      ok: false,
+      issues: ["error"],
+      suggestions: [],
+      loading: false,
+    };
+  }
+};
+
+const applySuggestion = (p, day, s) => {
+  scheduleMap[p][day].start = parseTimeToToday(s.start_time);
+  scheduleMap[p][day].end = parseTimeToToday(s.end_time);
+  onRowChanged(p, day);
+};
+
 const submit = async () => {
   try {
     await formRef.value?.validate();
@@ -599,6 +755,16 @@ const submit = async () => {
   if (!validateOverlaps()) {
     message.error("Solapamiento de horarios en la misma aula.");
     return;
+  }
+  for (const p of form.parallels) {
+    for (const d of weekdays) {
+      const k = avKey(p, d.value);
+      const r = rowAvail(k);
+      if (scheduleMap[p][d.value].enabled && r && !r.ok) {
+        message.error("Existen conflictos de disponibilidad.");
+        return;
+      }
+    }
   }
   saving.value = true;
   try {
@@ -644,10 +810,25 @@ const submit = async () => {
   }
 };
 
+const orderSchedules = (arr) => {
+  const a = Array.isArray(arr) ? [...arr] : [];
+  a.sort(
+    (x, y) =>
+      weekdayOrder[x.weekday] - weekdayOrder[y.weekday] ||
+      x.start_time.localeCompare(y.start_time)
+  );
+  return a;
+};
+const createdSorted = computed(() => {
+  const a = [...created.value];
+  a.sort((x, y) => String(x.parallel).localeCompare(String(y.parallel)));
+  return a;
+});
+
 const closeResult = () => {
   openResult.value = false;
-  created.value = [];
-  window.location.assign("/courses");
+  const n = created.value.length;
+  router.push({ path: "/courses", query: { created: String(n) } });
 };
 
 onMounted(async () => {

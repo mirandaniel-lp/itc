@@ -1,6 +1,6 @@
 <template>
   <app-layout>
-    <div class="min-h-screen bg-[#0f172a] p-10 text-white flex justify-center">
+    <div class="bg-[#0f172a] p-10 text-white flex justify-center">
       <div
         class="w-full max-w-5xl bg-[#1e293b]/90 border border-[#334155] rounded-2xl p-8 shadow-[0_8px_30px_rgba(0,0,0,0.6)]"
         v-if="loaded"
@@ -113,7 +113,7 @@
                 size="large"
                 :loading="saving"
                 @click="submit"
-                >Guardar cambios</n-button
+                >Guardar</n-button
               >
             </div>
           </n-form>

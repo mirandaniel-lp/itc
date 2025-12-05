@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { serialize } from "../utils/serializer.js";
+import { sendStudentCredentials } from "../utils/mailer.js";
 
 const prisma = new PrismaClient();
 
@@ -11,7 +12,6 @@ const initials = (last_name, second_last_name, name) =>
   `${(last_name || "").trim().charAt(0)}${(second_last_name || "")
     .trim()
     .charAt(0)}${(name || "").trim().charAt(0)}`.toLowerCase();
-
 const generatePin = (len = 6) =>
   Array.from({ length: len }, () => Math.floor(Math.random() * 10)).join("");
 
@@ -80,7 +80,6 @@ async function ensureMobileCreds(studentId) {
   if (!st) throw new Error("Estudiante no encontrado");
   if (st.app_username && st.app_password_hash)
     return { created: false, username: st.app_username };
-
   const ci = (st.ci || "").replace(/\D/g, "");
   const base = clean(
     (initials(st.last_name, st.second_last_name, st.name) + ci).toLowerCase()
@@ -96,10 +95,8 @@ async function ensureMobileCreds(studentId) {
     i += 1;
     finalUsername = `${candidate}${i}`;
   }
-
   const plain = generatePin(6);
   const hash = await bcrypt.hash(plain, 10);
-
   const updated = await prisma.student.update({
     where: { id: st.id },
     data: {
@@ -108,7 +105,6 @@ async function ensureMobileCreds(studentId) {
       app_enabled: true,
     },
   });
-
   return { created: true, username: updated.app_username, password: plain };
 }
 
@@ -132,10 +128,6 @@ async function checkDateWindow(courseId, enrollment_date) {
   if (!c) return { ok: false, msg: "Curso no encontrado" };
   const d = new Date(enrollment_date);
   if (isNaN(d.getTime())) return { ok: false, msg: "Fecha inválida" };
-  if (d < c.start_date)
-    return { ok: false, msg: "Fecha anterior al inicio del curso" };
-  if (c.end_date && d > c.end_date)
-    return { ok: false, msg: "Fecha posterior al fin del curso" };
   return { ok: true };
 }
 
@@ -256,6 +248,20 @@ export const createEnrollmentTx = async (req, res) => {
         : null,
       schedule,
     };
+
+    const st = await prisma.student.findUnique({
+      where: { id: toBigInt(studentId) },
+    });
+    if (cred.created && st?.email) {
+      Promise.resolve(
+        sendStudentCredentials({
+          to: st.email,
+          fullName: `${st.name} ${st.last_name}`.trim(),
+          username: cred.username,
+          password: cred.password,
+        })
+      ).catch(() => {});
+    }
 
     res.status(201).json(serialize(payload));
   } catch (err) {

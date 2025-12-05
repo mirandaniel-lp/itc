@@ -194,37 +194,65 @@ export const createCoursesWithSchedules = async (req, res) => {
     b.termId &&
     b.programId &&
     b.start_date;
-  if (!baseRequired) {
+
+  if (!baseRequired)
     return res.status(400).json({ error: "Datos incompletos." });
-  }
+
+  const term = await prisma.academicTerm.findUnique({
+    where: { id: toBigInt(b.termId) },
+  });
+  if (!term || term.status !== true)
+    return res.status(400).json({ error: "Periodo inválido." });
+
   const startDate = new Date(b.start_date);
   const endDate = b.end_date ? new Date(b.end_date) : null;
-  if (endDate && endDate < startDate) {
-    return res.status(400).json({ error: "Fechas inválidas." });
+  const endForCheck = endDate ?? startDate;
+  if (startDate < term.start_date || endForCheck > term.end_date) {
+    return res
+      .status(400)
+      .json({ error: "Fechas fuera del periodo académico." });
   }
+
+  const weekdaysOrder = {
+    LUNES: 1,
+    MARTES: 2,
+    MIERCOLES: 3,
+    JUEVES: 4,
+    VIERNES: 5,
+    SABADO: 6,
+    DOMINGO: 7,
+  };
   const schedules = Array.isArray(b.schedules) ? b.schedules : [];
   const parallels = b.parallels.map((p) => String(p));
   const byParallel = new Map();
   for (const p of parallels) byParallel.set(p, []);
+
+  const hhmmToMinutes = (t) => {
+    const [h, m] = String(t || "")
+      .split(":")
+      .map((x) => parseInt(x, 10));
+    if (Number.isNaN(h) || Number.isNaN(m)) return null;
+    return h * 60 + m;
+  };
+  const rangesOverlap = (aStart, aEnd, bStart, bEnd) =>
+    Math.max(aStart, bStart) < Math.min(aEnd, bEnd);
+
   for (const s of schedules) {
     const p = String(s.parallel || "");
-    if (!byParallel.has(p)) {
+    if (!byParallel.has(p))
       return res
         .status(400)
         .json({ error: "Paralelo sin declarar en horarios." });
-    }
     const wd = String(s.weekday || "");
     const st = String(s.start_time || "");
     const et = String(s.end_time || "");
     const cl = s.classroomId;
-    if (!wd || !st || !et || !cl) {
+    if (!wd || !st || !et || !cl)
       return res.status(400).json({ error: "Horario incompleto." });
-    }
     const sm = hhmmToMinutes(st);
     const em = hhmmToMinutes(et);
-    if (sm == null || em == null || sm >= em) {
+    if (sm == null || em == null || sm >= em)
       return res.status(400).json({ error: "Rango de hora inválido." });
-    }
     byParallel.get(p).push({
       weekday: wd,
       classroomId: BigInt(String(cl)),
@@ -232,29 +260,26 @@ export const createCoursesWithSchedules = async (req, res) => {
       end_time: et,
       sm,
       em,
+      wdOrd: weekdaysOrder[wd] || 99,
     });
   }
+
   for (const p of parallels) {
     const arr = byParallel.get(p) || [];
-    if (!arr.length) {
+    if (!arr.length)
       return res
         .status(400)
         .json({ error: "Cada paralelo debe tener al menos un horario." });
-    }
-    arr.sort((a, b) =>
-      a.weekday === b.weekday ? a.sm - b.sm : a.weekday.localeCompare(b.weekday)
-    );
+    arr.sort((a, b) => (a.wdOrd === b.wdOrd ? a.sm - b.sm : a.wdOrd - b.wdOrd));
     for (let i = 0; i < arr.length; i++) {
       for (let j = i + 1; j < arr.length; j++) {
         if (arr[i].weekday !== arr[j].weekday) continue;
         if (arr[i].classroomId !== arr[j].classroomId) continue;
         if (rangesOverlap(arr[i].sm, arr[i].em, arr[j].sm, arr[j].em)) {
-          return res
-            .status(400)
-            .json({
-              error:
-                "Solapamiento interno de horarios en el mismo paralelo y aula.",
-            });
+          return res.status(400).json({
+            error:
+              "Solapamiento interno de horarios en el mismo paralelo y aula.",
+          });
         }
       }
     }
@@ -275,14 +300,16 @@ export const createCoursesWithSchedules = async (req, res) => {
         weekday: { in: weekdays },
         course: {
           status: true,
+          termId: toBigInt(b.termId),
           AND: [
-            { start_date: { lte: endDate ?? startDate } },
+            { start_date: { lte: endForCheck } },
             { OR: [{ end_date: null }, { end_date: { gte: startDate } }] },
           ],
         },
       },
       include: { course: true },
     });
+
     for (const existing of classroomDb) {
       const esm = hhmmToMinutes(existing.start_time);
       const eem = hhmmToMinutes(existing.end_time);
@@ -306,9 +333,10 @@ export const createCoursesWithSchedules = async (req, res) => {
         weekday: { in: weekdays },
         course: {
           status: true,
-          teacherId: BigInt(String(b.teacherId)),
+          termId: toBigInt(b.termId),
+          teacherId: toBigInt(b.teacherId),
           AND: [
-            { start_date: { lte: endDate ?? startDate } },
+            { start_date: { lte: endForCheck } },
             { OR: [{ end_date: null }, { end_date: { gte: startDate } }] },
           ],
         },
@@ -331,7 +359,6 @@ export const createCoursesWithSchedules = async (req, res) => {
         }
       }
     }
-
     const created = await prisma.$transaction(async (tx) => {
       const out = [];
       for (const p of parallels) {
@@ -381,7 +408,179 @@ export const createCoursesWithSchedules = async (req, res) => {
     });
 
     res.status(201).json({ courses: serialize(result) });
-  } catch {
+  } catch (e) {
     res.status(400).json({ error: "Error al crear cursos y horarios." });
+    console.log(e);
+  }
+};
+
+export const getAvailability = async (req, res) => {
+  const b = req.body || {};
+  const teacherId = b.teacherId;
+  const startDate = b.start_date ? new Date(b.start_date) : null;
+  const endDate = b.end_date ? new Date(b.end_date) : null;
+  const shift = String(b.shift || "").toUpperCase();
+  const checks = Array.isArray(b.checks) ? b.checks : [];
+
+  const excludeCourseId = b.exclude_course_id
+    ? BigInt(String(b.exclude_course_id))
+    : null;
+  const excludeScheduleIds = Array.isArray(b.exclude_schedule_ids)
+    ? b.exclude_schedule_ids.map((x) => BigInt(String(x)))
+    : [];
+
+  if (!teacherId || !startDate || !endDate || !checks.length) {
+    return res.status(400).json({ error: "Datos incompletos." });
+  }
+
+  const toMin = (t) => {
+    const [h, m] = String(t || "")
+      .split(":")
+      .map((x) => parseInt(x, 10));
+    if (Number.isNaN(h) || Number.isNaN(m)) return null;
+    return h * 60 + m;
+  };
+  const toHH = (m) => {
+    const h = Math.floor(m / 60);
+    const mm = m % 60;
+    return `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+  };
+  const winByShift = (s) => {
+    if (s === "MAÑANA" || s === "MANANA") return [480, 750];
+    if (s === "TARDE") return [840, 1110];
+    if (s === "NOCHE") return [1110, 1320];
+    return [420, 1320];
+  };
+
+  const [winStart, winEnd] = winByShift(shift);
+  const wdSet = new Set(checks.map((c) => String(c.weekday)));
+  const roomSet = new Set(checks.map((c) => BigInt(String(c.classroomId))));
+
+  try {
+    const roomDb = await prisma.courseSchedule.findMany({
+      where: {
+        id: excludeScheduleIds.length
+          ? { notIn: excludeScheduleIds }
+          : undefined,
+        classroomId: { in: Array.from(roomSet) },
+        weekday: { in: Array.from(wdSet) },
+        course: {
+          status: true,
+          AND: [
+            { start_date: { lte: endDate } },
+            { OR: [{ end_date: null }, { end_date: { gte: startDate } }] },
+          ],
+        },
+      },
+      include: { course: true },
+    });
+
+    const teacherFilter = {
+      status: true,
+      teacherId: BigInt(String(teacherId)),
+      AND: [
+        { start_date: { lte: endDate } },
+        { OR: [{ end_date: null }, { end_date: { gte: startDate } }] },
+      ],
+      ...(excludeCourseId ? { id: { not: excludeCourseId } } : {}),
+    };
+
+    const teacherDb = await prisma.courseSchedule.findMany({
+      where: {
+        id: excludeScheduleIds.length
+          ? { notIn: excludeScheduleIds }
+          : undefined,
+        weekday: { in: Array.from(wdSet) },
+        course: teacherFilter,
+      },
+      include: { course: true },
+    });
+
+    const merge = (arr) => {
+      const a = arr
+        .filter((x) => x.s != null && x.e != null)
+        .sort((x, y) => x.s - y.s);
+      const out = [];
+      for (const it of a) {
+        if (!out.length || it.s > out[out.length - 1].e)
+          out.push({ s: it.s, e: it.e });
+        else if (it.e > out[out.length - 1].e) out[out.length - 1].e = it.e;
+      }
+      return out;
+    };
+
+    const roundUp30 = (m) => (m % 30 === 0 ? m : m + (30 - (m % 30)));
+
+    const results = [];
+    for (const c of checks) {
+      const sm = toMin(c.start_time);
+      const em = toMin(c.end_time);
+      const key =
+        c.id || `${c.weekday}-${c.classroomId}-${c.start_time}-${c.end_time}`;
+
+      const roomInts = roomDb
+        .filter(
+          (x) =>
+            String(x.weekday) === String(c.weekday) &&
+            x.classroomId === BigInt(String(c.classroomId))
+        )
+        .map((x) => ({ s: toMin(x.start_time), e: toMin(x.end_time) }));
+
+      const tchInts = teacherDb
+        .filter((x) => String(x.weekday) === String(c.weekday))
+        .map((x) => ({ s: toMin(x.start_time), e: toMin(x.end_time) }));
+
+      const busy = merge(
+        roomInts.concat(tchInts).concat([
+          { s: winStart, e: winStart },
+          { s: winEnd, e: winEnd },
+        ])
+      );
+
+      const dur = em - sm;
+      const suggestions = [];
+      let prev = winStart;
+      for (const it of busy) {
+        const gapStart = Math.max(prev, winStart);
+        const gapEnd = Math.min(it.s, winEnd);
+        let cand = roundUp30(gapStart);
+        while (cand + dur <= gapEnd) {
+          suggestions.push({
+            start_time: toHH(cand),
+            end_time: toHH(cand + dur),
+          });
+          if (suggestions.length >= 6) break;
+          cand += 30;
+        }
+        if (suggestions.length >= 6) break;
+        prev = Math.max(prev, it.e);
+      }
+
+      const classConf = roomInts.some(
+        (i) => Math.max(i.s, sm) < Math.min(i.e, em)
+      );
+      const teachConf = tchInts.some(
+        (i) => Math.max(i.s, sm) < Math.min(i.e, em)
+      );
+      const outOfShift = sm < winStart || em > winEnd;
+
+      results.push({
+        id: key,
+        weekday: c.weekday,
+        classroomId: c.classroomId,
+        ok: !classConf && !teachConf && !outOfShift,
+        issues: [
+          ...(teachConf ? ["teacher"] : []),
+          ...(classConf ? ["classroom"] : []),
+          ...(outOfShift ? ["shift"] : []),
+        ],
+        suggestions,
+      });
+    }
+    return res.json({ results });
+  } catch {
+    return res
+      .status(500)
+      .json({ error: "No se pudo verificar disponibilidad." });
   }
 };

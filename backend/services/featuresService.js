@@ -4,13 +4,13 @@ const prisma = new PrismaClient();
 export async function featuresByCourse(courseId) {
   const cid = BigInt(courseId);
   return prisma.$queryRawUnsafe(
-    `SELECT * FROM vw_iforest_features WHERE course_id = $1`,
+    `SELECT * FROM vw_iforest_features_norm WHERE course_id = $1`,
     cid
   );
 }
 
 export async function featuresAll() {
-  return prisma.$queryRawUnsafe(`SELECT * FROM vw_iforest_features`);
+  return prisma.$queryRawUnsafe(`SELECT * FROM vw_iforest_features_norm`);
 }
 
 export async function activeCourseIds() {

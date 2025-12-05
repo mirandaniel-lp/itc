@@ -1,6 +1,11 @@
 <template>
   <auth-card title="Ingreso Docente">
-    <n-form :model="formData" :rules="rules" ref="formRef">
+    <n-form
+      :model="formData"
+      :rules="rules"
+      ref="formRef"
+      @submit.prevent="handleLogin"
+    >
       <TextInput
         v-model="formData.ci"
         label="Carnet de Identidad"
@@ -14,7 +19,7 @@
         placeholder="Ingrese su PIN"
         class="my-5"
       />
-      <PrimaryButton :loading="isLoading" @click="handleLogin" class="mt-3">
+      <PrimaryButton type="submit" :loading="isLoading" class="mt-3">
         Ingresar
       </PrimaryButton>
 
@@ -76,7 +81,6 @@ export default {
         this.message.success("¡Bienvenido, docente!");
         try {
           await this.$router.replace({ path: "/teacher/dashboard" });
-          window.location.reload();
         } catch {
           window.location.href = "/teacher/dashboard";
         }
@@ -97,3 +101,5 @@ export default {
   },
 };
 </script>
+
+<style scoped></style>

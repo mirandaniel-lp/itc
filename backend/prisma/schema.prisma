@@ -7,6 +7,366 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Role {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  users User[]
+}
+
+model User {
+  id                     Int                       @id @default(autoincrement())
+  email                  String                    @unique
+  password               String
+  email_verified_at      DateTime?                 @db.Timestamptz(6)
+  status                 Boolean                   @default(true)
+  roleId                 Int
+  created_at             DateTime?                 @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime?                 @updatedAt @db.Timestamptz(6)
+  notificationRecipients NotificationRecipient[]
+  role                   Role                      @relation(fields: [roleId], references: [id])
+  auditEvents            AuditEvent[]              @relation("UserAuditEvent")
+  createdAuditEvents     AuditEvent[]              @relation("auditCreatedBy")
+  updatedAuditEvents     AuditEvent[]              @relation("auditUpdatedBy")
+  loginSessions          LoginSession[]
+  createdLoginSessions   LoginSession[]            @relation("sessionCreatedBy")
+  updatedLoginSessions   LoginSession[]            @relation("sessionUpdatedBy")
+}
+
+model AcademicTerm {
+  id         BigInt     @id @default(autoincrement())
+  name       String     @unique @db.VarChar(80)
+  start_date DateTime   @db.Timestamptz(6)
+  end_date   DateTime   @db.Timestamptz(6)
+  status     Boolean    @default(true)
+  created_at DateTime   @default(now()) @db.Timestamptz(6)
+  updated_at DateTime   @updatedAt @db.Timestamptz(6)
+  courses    Course[]
+
+  @@index([start_date, end_date])
+}
+
+model Modality {
+  id                 BigInt    @id @default(autoincrement())
+  name               String    @unique @db.VarChar(50)
+  duration_in_months Int
+  created_at         DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime  @updatedAt @db.Timestamptz(6)
+  courses            Course[]
+}
+
+model Program {
+  id         BigInt   @id @default(autoincrement())
+  code       String   @unique @db.VarChar(30)
+  name       String   @unique @db.VarChar(120)
+  status     Boolean  @default(true)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+  courses    Course[]
+
+  @@index([status])
+}
+
+model Classroom {
+  id         BigInt   @id @default(autoincrement())
+  code       String   @unique @db.VarChar(30)
+  name       String   @db.VarChar(100)
+  location   String?  @db.VarChar(120)
+  capacity   Int?
+  status     Boolean  @default(true)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+  schedules  CourseSchedule[]
+
+  @@index([status])
+}
+
+model Teacher {
+  id              BigInt     @id @default(autoincrement())
+  last_name       String
+  second_last_name String?
+  name            String
+  ci              String     @unique
+  dateofbirth     DateTime?  @db.Date
+  placeofbirth    String
+  phone           String     @db.VarChar(10)
+  gender          Gender
+  specialty       String?    @db.VarChar(255)
+  status          Boolean    @default(true)
+  created_at      DateTime   @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime   @updatedAt @db.Timestamptz(6)
+  password        String?
+  email           String?    @unique
+  activities      Activity[]
+  courses         Course[]
+
+  @@index([status])
+}
+
+model Student {
+  id               BigInt     @id @default(autoincrement())
+  last_name        String      @db.VarChar(100)
+  second_last_name String      @db.VarChar(100)
+  name             String      @db.VarChar(100)
+  ci               String?     @db.VarChar(15)
+  image            String?     @db.VarChar(255)
+  placeofbirth     String?     @db.VarChar(200)
+  phone            String      @db.VarChar(10)
+  gender           Gender
+  status           Boolean     @default(true)
+  app_enabled      Boolean     @default(true)
+  app_password_hash String?
+  app_username     String?     @unique
+  app_fcm_token    String?
+  created_at       DateTime?   @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime?   @updatedAt @db.Timestamptz(6)
+  dateofbirth      DateTime?   @db.Date
+  email            String?     @unique @db.VarChar(255)
+  attendances      Attendance[]
+  dropoutAlerts    DropoutAlert[]
+  enrollments      Enrollment[]
+  grades           Grade[]
+  contacts         StudentContact[]
+
+  @@index([status])
+  @@index([ci])
+}
+
+model StudentContact {
+  id          BigInt   @id @default(autoincrement())
+  studentId   BigInt
+  full_name   String   @db.VarChar(120)
+  relation    String   @db.VarChar(60)
+  phone       String   @db.VarChar(15)
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime @updatedAt @db.Timestamptz(6)
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, full_name])
+}
+
+model Course {
+  id            BigInt        @id @default(autoincrement())
+  name          String        @db.VarChar(100)
+  parallel      String        @db.VarChar(100)
+  description   String?
+  cost          Decimal        @default(0) @db.Decimal(10, 2)
+  start_date    DateTime       @db.Timestamptz(6)
+  end_date      DateTime?      @db.Timestamptz(6)
+  teacherId     BigInt
+  modalityId    BigInt
+  status        Boolean        @default(true)
+  created_at    DateTime       @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime       @updatedAt @db.Timestamptz(6)
+  max_capacity  Int?
+  programId     BigInt
+  shift         Shift
+  termId        BigInt
+  activities    Activity[]
+  attendances   Attendance[]
+  modality      Modality       @relation(fields: [modalityId], references: [id])
+  program       Program        @relation(fields: [programId], references: [id])
+  teacher       Teacher        @relation(fields: [teacherId], references: [id])
+  term          AcademicTerm   @relation(fields: [termId], references: [id])
+  schedules     CourseSchedule[]
+  dropoutAlerts DropoutAlert[]
+  enrollments   Enrollment[]
+  gradePolicy   GradePolicy?
+
+  @@unique([name, parallel, termId])
+  @@index([teacherId])
+  @@index([modalityId])
+  @@index([termId])
+  @@index([programId])
+  @@index([status])
+}
+
+model CourseSchedule {
+  id          BigInt     @id @default(autoincrement())
+  courseId    BigInt
+  classroomId BigInt
+  weekday     Weekday
+  start_time  String     @db.VarChar(5)
+  end_time    String     @db.VarChar(5)
+  created_at  DateTime   @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime   @updatedAt @db.Timestamptz(6)
+  classroom   Classroom  @relation(fields: [classroomId], references: [id])
+  course      Course     @relation(fields: [courseId], references: [id])
+
+  @@unique([courseId, weekday, start_time, end_time])
+  @@index([classroomId, weekday, start_time, end_time])
+}
+
+model GradePolicy {
+  id                 BigInt   @id @default(autoincrement())
+  courseId           BigInt   @unique
+  min_approval_score Decimal  @db.Decimal(5, 2)
+  min_attendance_pct Decimal  @db.Decimal(5, 2)
+  created_at         DateTime @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime @updatedAt @db.Timestamptz(6)
+  course             Course   @relation(fields: [courseId], references: [id])
+}
+
+model Enrollment {
+  id              BigInt    @id @default(autoincrement())
+  studentId       BigInt
+  courseId        BigInt
+  enrollment_date DateTime   @db.Timestamptz(6)
+  payment_type    PaymentType
+  status          Boolean    @default(true)
+  created_at      DateTime   @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime   @updatedAt @db.Timestamptz(6)
+  course          Course     @relation(fields: [courseId], references: [id])
+  student         Student    @relation(fields: [studentId], references: [id])
+
+  @@unique([studentId, courseId])
+  @@index([courseId, status])
+  @@index([studentId, status])
+}
+
+model Activity {
+  id            BigInt    @id @default(autoincrement())
+  title         String    @db.VarChar(100)
+  description   String?
+  courseId      BigInt
+  teacherId     BigInt
+  created_at    DateTime   @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime   @updatedAt @db.Timestamptz(6)
+  status        Boolean    @default(true)
+  weight_pct    Decimal?   @db.Decimal(5, 2)
+  due_date      DateTime?  @db.Timestamptz(6)
+  is_published  Boolean    @default(false)
+  type          ActivityType @default(OTRO)
+  course        Course     @relation(fields: [courseId], references: [id])
+  teacher       Teacher    @relation(fields: [teacherId], references: [id])
+  grades        Grade[]
+
+  @@index([courseId, status])
+  @@index([teacherId])
+}
+
+model Grade {
+  id           BigInt    @id @default(autoincrement())
+  activityId   BigInt
+  studentId    BigInt
+  score        Decimal    @db.Decimal(5, 2)
+  feedback     String?
+  created_at   DateTime   @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime   @updatedAt @db.Timestamptz(6)
+  status       Boolean    @default(true)
+  is_published Boolean    @default(false)
+  activity     Activity   @relation(fields: [activityId], references: [id])
+  student      Student    @relation(fields: [studentId], references: [id])
+
+  @@unique([activityId, studentId])
+  @@index([studentId])
+}
+
+model Attendance {
+  id          BigInt     @id @default(autoincrement())
+  studentId   BigInt
+  courseId    BigInt
+  date        DateTime   @db.Timestamptz(6)
+  status      AttendanceStatus
+  checkinAt   DateTime?  @db.Timestamptz(6)
+  checkoutAt  DateTime?  @db.Timestamptz(6)
+  justification String?
+  created_at  DateTime   @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime   @updatedAt @db.Timestamptz(6)
+  course      Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  student     Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, courseId, date])
+  @@index([courseId, date])
+  @@index([studentId, date])
+  @@index([status, date])
+}
+
+model AcademicHoliday {
+  id         BigInt   @id @default(autoincrement())
+  date       DateTime @unique @db.Date
+  name       String   @db.VarChar(120)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+
+  @@index([date])
+}
+
+model IForestModel {
+  id            BigInt   @id @default(autoincrement())
+  version       String   @unique
+  features      String?
+  contamination Float
+  threshold     Float
+  createdAt     DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @db.Timestamptz(6)
+
+  @@map("iforest_models")
+}
+
+model RiskPrediction {
+  id           BigInt   @id @default(autoincrement())
+  studentId    BigInt
+  courseId     BigInt
+  score        Float
+  risk01       Float
+  alert        Boolean
+  modelVersion String
+  threshold    Float
+  contamination Float
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @db.Timestamptz(6)
+
+  @@unique([studentId, courseId, modelVersion], name: "studentId_courseId_modelVersion")
+  @@map("risk_predictions")
+}
+
+model DropoutAlert {
+  id           BigInt   @id @default(autoincrement())
+  studentId    BigInt
+  courseId     BigInt
+  risk01       Float
+  alert        Boolean
+  modelVersion String
+  threshold    Float
+  contamination Float
+  channel      String   @default("email")
+  message      String?
+  sentAt       DateTime? @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @db.Timestamptz(6)
+  course       Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  student      Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, courseId, createdAt])
+}
+
+model Notification {
+  id         BigInt                 @id @default(autoincrement())
+  title      String
+  message    String
+  level      String                 @db.VarChar(10)
+  data       Json?
+  created_by String?                @db.VarChar(50)
+  created_at DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at DateTime               @updatedAt @db.Timestamptz(6)
+  recipients NotificationRecipient[]
+}
+
+model NotificationRecipient {
+  id            BigInt       @id @default(autoincrement())
+  notificationId BigInt
+  userId        Int
+  readAt        DateTime?    @db.Timestamptz(6)
+  deletedAt     DateTime?    @db.Timestamptz(6)
+  created_at    DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime     @updatedAt @db.Timestamptz(6)
+  notification  Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  user          User         @relation(fields: [userId], references: [id])
+
+  @@unique([notificationId, userId])
+  @@index([userId, readAt])
+}
+
 enum Gender {
   MASCULINO
   FEMENINO
@@ -49,360 +409,42 @@ enum ActivityType {
   OTRO
 }
 
-model Role {
-  id    Int    @id @default(autoincrement())
-  name  String @unique
-  users User[]
+model AuditEvent {
+  id          Int       @id @default(autoincrement())
+  userId      Int?
+  method      String    @db.VarChar(10)
+  route       String    @db.VarChar(191)
+  action      String?   @db.VarChar(191)
+  ip          String?   @db.VarChar(45)
+  userAgent   String?   @db.Text
+  payload     Json?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdBy   Int?
+  updatedBy   Int?
+  user        User?     @relation("UserAuditEvent", fields: [userId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  createdByUser User?   @relation("auditCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  updatedByUser User?   @relation("auditUpdatedBy", fields: [updatedBy], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([userId], name: "idx_aud_user")
+  @@map("audit_events")
 }
 
-model User {
-  id                Int       @id @default(autoincrement())
-  email             String    @unique
-  password          String
-  email_verified_at DateTime?
-  created_at        DateTime  @default(now())
-  updated_at        DateTime  @updatedAt
-  status            Boolean   @default(true)
-  roleId            Int
-  role              Role      @relation(fields: [roleId], references: [id])
-  notificationRecipients NotificationRecipient[]
-}
+model LoginSession {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  ip          String?   @db.VarChar(45)
+  userAgent   String?   @db.Text
+  startedAt   DateTime
+  endedAt     DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdBy   Int?
+  updatedBy   Int?
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  createdByUser User?   @relation("sessionCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  updatedByUser User?   @relation("sessionUpdatedBy", fields: [updatedBy], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
-model AcademicTerm {
-  id          BigInt   @id @default(autoincrement())
-  name        String   @db.VarChar(80)
-  start_date  DateTime
-  end_date    DateTime
-  status      Boolean  @default(true)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-  courses     Course[]
-
-  @@unique([name])
-  @@index([start_date, end_date])
-}
-
-model Modality {
-  id                 BigInt   @id @default(autoincrement())
-  name               String   @db.VarChar(50)
-  duration_in_months Int
-  created_at         DateTime @default(now())
-  updated_at         DateTime @updatedAt
-  courses            Course[]
-
-  @@unique([name])
-}
-
-model Program {
-  id         BigInt   @id @default(autoincrement())
-  code       String   @db.VarChar(30)
-  name       String   @db.VarChar(120)
-  status     Boolean  @default(true)
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-  courses    Course[]
-
-  @@unique([code])
-  @@unique([name])
-  @@index([status])
-}
-
-model Classroom {
-  id          BigInt   @id @default(autoincrement())
-  code        String   @db.VarChar(30)
-  name        String   @db.VarChar(100)
-  location    String?  @db.VarChar(120)
-  capacity    Int?
-  status      Boolean  @default(true)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-  schedules   CourseSchedule[]
-
-  @@unique([code])
-  @@index([status])
-}
-
-model Teacher {
-  id               BigInt   @id @default(autoincrement())
-  last_name        String
-  second_last_name String?
-  name             String
-  ci               String   @unique
-  email            String?  @unique
-  password         String?
-  dateofbirth      DateTime?
-  placeofbirth     String
-  phone            String   @db.VarChar(10)
-  gender           Gender
-  specialty        String?  @db.VarChar(255)
-  status           Boolean  @default(true)
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
-  courses          Course[]
-  activities       Activity[]
-
-  @@index([status])
-}
-
-model Student {
-  id               BigInt   @id @default(autoincrement())
-  last_name        String   @db.VarChar(100)
-  second_last_name String   @db.VarChar(100)
-  name             String   @db.VarChar(100)
-  ci               String?  @db.VarChar(15)
-  image            String?  @db.VarChar(255)
-  dateofbirth      DateTime
-  placeofbirth     String?  @db.VarChar(200)
-  phone            String   @db.VarChar(10)
-  gender           Gender
-  status           Boolean  @default(true)
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
-  enrollments      Enrollment[]
-  grades           Grade[]
-  attendances      Attendance[]
-  contacts         StudentContact[]
-
-  app_username     String?  @unique
-  app_password_hash String?
-  app_enabled      Boolean  @default(true)
-
-  @@index([status])
-  @@index([ci])
-  dropoutAlerts  DropoutAlert[]
-}
-
-
-model StudentContact {
-  id          BigInt   @id @default(autoincrement())
-  studentId   BigInt
-  full_name   String   @db.VarChar(120)
-  relation    String   @db.VarChar(60)
-  phone       String   @db.VarChar(15)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
-
-  @@index([studentId, full_name])
-}
-
-model Course {
-  id           BigInt    @id @default(autoincrement())
-  name         String    @db.VarChar(100)
-  parallel     String    @db.VarChar(100)
-  description  String?   @db.Text
-  cost         Decimal   @default(0) @db.Decimal(10, 2)
-  start_date   DateTime
-  end_date     DateTime?
-  shift        Shift
-  max_capacity Int?
-  teacherId    BigInt
-  modalityId   BigInt
-  termId       BigInt
-  programId    BigInt
-  teacher      Teacher      @relation(fields: [teacherId], references: [id])
-  modality     Modality     @relation(fields: [modalityId], references: [id])
-  term         AcademicTerm @relation(fields: [termId], references: [id])
-  program      Program      @relation(fields: [programId], references: [id])
-  status       Boolean      @default(true)
-  created_at   DateTime     @default(now())
-  updated_at   DateTime     @updatedAt
-  enrollments  Enrollment[]
-  activities   Activity[]
-  attendances  Attendance[]
-  schedules    CourseSchedule[]
-  gradePolicy  GradePolicy?
-
-  @@index([teacherId])
-  @@index([modalityId])
-  @@index([termId])
-  @@index([programId])
-  @@index([status])
-  @@unique([name, parallel, termId])
-  dropoutAlerts  DropoutAlert[]
-}
-
-model CourseSchedule {
-  id          BigInt    @id @default(autoincrement())
-  courseId    BigInt
-  classroomId BigInt
-  weekday     Weekday
-  start_time  String    @db.VarChar(5)
-  end_time    String    @db.VarChar(5)
-  created_at  DateTime  @default(now())
-  updated_at  DateTime  @updatedAt
-  course      Course    @relation(fields: [courseId], references: [id])
-  classroom   Classroom @relation(fields: [classroomId], references: [id])
-
-  @@unique([courseId, weekday, start_time, end_time])
-  @@index([classroomId, weekday, start_time, end_time])
-}
-
-model GradePolicy {
-  id                 BigInt   @id @default(autoincrement())
-  courseId           BigInt   @unique
-  min_approval_score Decimal  @db.Decimal(5, 2)
-  min_attendance_pct Decimal  @db.Decimal(5, 2)
-  created_at         DateTime @default(now())
-  updated_at         DateTime @updatedAt
-  course             Course   @relation(fields: [courseId], references: [id])
-}
-
-model Enrollment {
-  id              BigInt      @id @default(autoincrement())
-  studentId       BigInt
-  courseId        BigInt
-  enrollment_date DateTime
-  payment_type    PaymentType
-  status          Boolean  @default(true)
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
-  student         Student @relation(fields: [studentId], references: [id])
-  course          Course  @relation(fields: [courseId], references: [id])
-
-  @@unique([studentId, courseId])
-  @@index([courseId, status])
-  @@index([studentId, status])
-}
-
-model Activity {
-  id           BigInt       @id @default(autoincrement())
-  title        String       @db.VarChar(100)
-  description  String?      @db.Text
-  weight_pct   Decimal?     @db.Decimal(5, 2)
-  status       Boolean      @default(true)
-  courseId     BigInt
-  teacherId    BigInt
-  type         ActivityType @default(OTRO)
-  due_date     DateTime?
-  is_published Boolean      @default(false)
-  created_at   DateTime     @default(now())
-  updated_at   DateTime     @updatedAt
-  course       Course       @relation(fields: [courseId], references: [id])
-  teacher      Teacher      @relation(fields: [teacherId], references: [id])
-  grades       Grade[]
-
-  @@index([courseId, status])
-  @@index([teacherId])
-}
-
-model Grade {
-  id            BigInt   @id @default(autoincrement())
-  activityId    BigInt
-  studentId     BigInt
-  score         Decimal  @db.Decimal(5, 2)
-  feedback      String?  @db.Text
-  status        Boolean  @default(true)
-  is_published  Boolean  @default(false)
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
-  activity      Activity @relation(fields: [activityId], references: [id])
-  student       Student  @relation(fields: [studentId], references: [id])
-
-  @@unique([activityId, studentId])
-  @@index([studentId])
-}
-
-model Attendance {
-  id            BigInt           @id @default(autoincrement())
-  studentId     BigInt
-  courseId      BigInt
-  date          DateTime
-  status        AttendanceStatus
-  checkinAt     DateTime?
-  checkoutAt    DateTime?
-  justification String?
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
-  student       Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  course        Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
-
-  @@unique([studentId, courseId, date])
-  @@index([courseId, date])
-  @@index([studentId, date])
-  @@index([status, date])
-}
-
-model AcademicHoliday {
-  id          BigInt   @id @default(autoincrement())
-  date        DateTime @unique
-  name        String   @db.VarChar(120)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-
-  @@index([date])
-}
-
-model IForestModel {
-  id           BigInt   @id @default(autoincrement())
-  version      String   @unique
-  features     String?
-  contamination Float
-  threshold    Float
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  @@map("iforest_models")
-}
-
-model RiskPrediction {
-  id            BigInt   @id @default(autoincrement())
-  studentId     BigInt
-  courseId      BigInt
-  score         Float
-  risk01        Float
-  alert         Boolean
-  modelVersion  String
-  threshold     Float
-  contamination Float
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  @@unique([studentId, courseId, modelVersion], name: "studentId_courseId_modelVersion")
-  @@map("risk_predictions")
-}
-
-model DropoutAlert {
-  id            BigInt   @id @default(autoincrement())
-  studentId     BigInt
-  courseId      BigInt
-  risk01        Float
-  alert         Boolean
-  modelVersion  String
-  threshold     Float
-  contamination Float
-  channel       String   @default("email")
-  message       String?
-  sentAt        DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  course        Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-
-  @@index([studentId, courseId, createdAt])
-}
-
-model Notification {
-  id           BigInt                   @id @default(autoincrement())
-  title        String
-  message      String
-  level        String                   @db.VarChar(10)
-  data         Json?
-  created_by   String?                  @db.VarChar(50)
-  created_at   DateTime                 @default(now())
-  updated_at   DateTime                 @updatedAt
-  recipients   NotificationRecipient[]
-}
-
-model NotificationRecipient {
-  id             BigInt       @id @default(autoincrement())
-  notificationId BigInt
-  userId         Int
-  readAt         DateTime?
-  deletedAt      DateTime?
-  created_at     DateTime     @default(now())
-  updated_at     DateTime     @updatedAt
-  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
-  user           User         @relation(fields: [userId], references: [id])
-  @@unique([notificationId, userId])
-  @@index([userId, readAt])
+  @@index([userId], name: "idx_ses_user")
+  @@map("login_sessions")
 }

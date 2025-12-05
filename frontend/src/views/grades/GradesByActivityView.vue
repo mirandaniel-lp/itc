@@ -2,52 +2,84 @@
   <app-layout>
     <div class="min-h-screen p-6 space-y-6">
       <h1 class="text-3xl md:text-4xl font-extrabold">Calificaciones</h1>
+
       <div class="flex flex-wrap items-center gap-3 mb-4">
         <n-select
           v-model:value="selectedCourse"
           :options="courseOptions"
           placeholder="Selecciona un curso"
-          style="max-width: 260px"
+          size="large"
+          style="width: 280px"
           @update:value="fetchActivities"
         />
         <n-select
           v-model:value="selectedActivity"
           :options="activityOptions"
           placeholder="Selecciona una actividad"
-          style="max-width: 260px"
+          size="large"
+          style="width: 280px"
           :disabled="!selectedCourse"
           @update:value="fetchStudentsAndGrades"
         />
+
         <div class="flex items-center gap-2 ml-auto">
           <n-input-number
             v-model:value="globalScore"
             min="0"
             max="100"
+            size="large"
             placeholder="Nota general"
-            style="width: 120px"
+            style="width: 160px"
           />
-          <n-button
-            class="px-3 py-1.5 rounded-lg text-sm font-bold bg-gradient-to-r from-[#1e3a8a] to-[#2563eb] text-white hover:shadow-[0_0_15px_rgba(37,99,235,0.5)] transition-all"
-            @click="applyGlobalScore"
-            :disabled="!grades.length"
-          >
-            Aplicar
-          </n-button>
-          <n-button
-            class="px-3 py-1.5 rounded-lg text-sm font-bold bg-gradient-to-r from-[#ff1953] to-[#ff3064] text-white hover:shadow-[0_0_15px_rgba(37,99,235,0.5)] transition-all"
-            @click="clearAllScores"
-            :disabled="!grades.length"
-          >
-            Limpiar
-          </n-button>
-          <n-button
-            class="rounded-md bg-gradient-to-r from-[#1aff94] to-[#02cc6e] px-3 py-1.5 text-xs font-bold text-white hover:from-[#1aff94] hover:to-[#1aff94] transition"
-            :loading="saving"
-            @click="saveAll"
-            :disabled="!grades.length"
-          >
-            Guardar
-          </n-button>
+          <n-button-group>
+            <n-tooltip>
+              <template #trigger>
+                <n-button
+                  type="primary"
+                  size="large"
+                  secondary
+                  strong
+                  @click="applyGlobalScore"
+                  :disabled="!grades.length || globalScore === null"
+                >
+                  Aplicar
+                </n-button>
+              </template>
+              <span>Aplica esta nota a todos</span>
+            </n-tooltip>
+
+            <n-tooltip>
+              <template #trigger>
+                <n-button
+                  type="warning"
+                  size="large"
+                  secondary
+                  strong
+                  @click="clearAllScores"
+                  :disabled="!grades.length"
+                >
+                  Limpiar
+                </n-button>
+              </template>
+              <span>Borra notas y observaciones</span>
+            </n-tooltip>
+
+            <n-tooltip>
+              <template #trigger>
+                <n-button
+                  type="success"
+                  size="large"
+                  strong
+                  :loading="saving"
+                  @click="saveAll"
+                  :disabled="!grades.length"
+                >
+                  Guardar
+                </n-button>
+              </template>
+              <span>Guarda los cambios</span>
+            </n-tooltip>
+          </n-button-group>
         </div>
       </div>
 
@@ -60,6 +92,7 @@
         <n-statistic label="Aprobados" :value="summary.approved" />
         <n-statistic label="Reprobados" :value="summary.failed" />
       </div>
+
       <div
         class="rounded-2xl overflow-hidden border border-[#334155] shadow-[0_6px_25px_rgba(0,0,0,0.4)] bg-[#1e293b]/80 backdrop-blur-sm"
       >
@@ -73,6 +106,7 @@
           class="[&_.n-data-table-th]:text-center [&_.n-data-table-th]:font-extrabold [&_.n-data-table-td]:text-center [&_.n-data-table-tr:hover]:bg-[#1d4ed8]/20 transition-all"
         />
       </div>
+
       <div v-if="!grades.length" class="text-center text-gray-500 mt-6">
         No hay estudiantes para esta actividad.
       </div>
@@ -86,10 +120,12 @@ import {
   NCard,
   NSelect,
   NButton,
+  NButtonGroup,
   NInputNumber,
   NInput,
   NDataTable,
   NStatistic,
+  NTooltip,
   useMessage,
 } from "naive-ui";
 import AppLayout from "@/layouts/AppLayout.vue";
@@ -105,10 +141,12 @@ export default {
     NCard,
     NSelect,
     NButton,
+    NButtonGroup,
     NInputNumber,
     NInput,
     NDataTable,
     NStatistic,
+    NTooltip,
   },
   data() {
     return {
@@ -184,18 +222,15 @@ export default {
     },
     async fetchStudentsAndGrades() {
       if (!this.selectedCourse || !this.selectedActivity) return;
-
       const enrolledStudents = await StudentService.getByCourse(
         this.selectedCourse
       );
-
       const gradesRes = await GradeService.getGradesByActivity(
         this.selectedActivity
       );
       const existingGrades = Array.isArray(gradesRes)
         ? gradesRes
         : gradesRes?.grades || gradesRes?.data || [];
-
       this.grades = enrolledStudents.map((s) => {
         const found = existingGrades.find(
           (g) => Number(g.studentId) === Number(s.id)
@@ -208,7 +243,6 @@ export default {
           feedback: found?.feedback || "",
         };
       });
-
       this.updateSummary();
     },
     updateSummary() {
@@ -260,7 +294,7 @@ export default {
         await Promise.all(promises);
         this.message.success("Notas guardadas correctamente.");
         await this.fetchStudentsAndGrades();
-      } catch (err) {
+      } catch {
         this.message.error("Error al guardar notas.");
       } finally {
         this.saving = false;

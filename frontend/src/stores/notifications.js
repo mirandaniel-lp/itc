@@ -30,14 +30,23 @@ function shapeSocketItem(payload) {
 }
 
 async function load({ limit = 20 } = {}) {
-  const { data } = await apiGetMyNotifications({ limit });
-  state.items = data.items || [];
-  state.ready = true;
+  try {
+    const { data } = await apiGetMyNotifications({ limit });
+    state.items = data.items || [];
+    state.ready = true;
+  } catch {
+    state.items = [];
+    state.ready = true;
+  }
 }
 
 async function loadUnread() {
-  const { data } = await apiGetUnreadCount();
-  state.unread = data.unread ?? 0;
+  try {
+    const { data } = await apiGetUnreadCount();
+    state.unread = data.unread ?? 0;
+  } catch {
+    state.unread = 0;
+  }
 }
 
 async function markRead(recId) {

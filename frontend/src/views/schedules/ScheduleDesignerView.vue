@@ -46,6 +46,7 @@ import {
   NTimePicker,
   NDataTable,
   NPopconfirm,
+  NTag,
   useMessage,
 } from "naive-ui";
 import AppLayout from "@/layouts/AppLayout.vue";
@@ -62,6 +63,7 @@ export default {
     NTimePicker,
     NDataTable,
     NPopconfirm,
+    NTag,
   },
   data() {
     return {
@@ -75,6 +77,10 @@ export default {
       editClassroomId: null,
       editStartMs: null,
       editEndMs: null,
+      courseInfo: null,
+      checkBusy: false,
+      checkResult: null,
+      timer: null,
     };
   },
   computed: {
@@ -88,7 +94,10 @@ export default {
             row.id === this.editingId
               ? h(NTimePicker, {
                   value: this.editStartMs,
-                  "onUpdate:value": (v) => (this.editStartMs = v),
+                  "onUpdate:value": (v) => {
+                    this.editStartMs = v;
+                    this.deferCheck(row);
+                  },
                   format: "HH:mm",
                   style: "width: 110px",
                 })
@@ -101,7 +110,10 @@ export default {
             row.id === this.editingId
               ? h(NTimePicker, {
                   value: this.editEndMs,
-                  "onUpdate:value": (v) => (this.editEndMs = v),
+                  "onUpdate:value": (v) => {
+                    this.editEndMs = v;
+                    this.deferCheck(row);
+                  },
                   format: "HH:mm",
                   style: "width: 110px",
                 })
@@ -114,7 +126,10 @@ export default {
             row.id === this.editingId
               ? h(NSelect, {
                   value: this.editClassroomId,
-                  "onUpdate:value": (v) => (this.editClassroomId = v),
+                  "onUpdate:value": (v) => {
+                    this.editClassroomId = v;
+                    this.deferCheck(row);
+                  },
                   options: this.classroomOptions,
                   style: "min-width: 160px",
                 })
@@ -131,6 +146,7 @@ export default {
                   {
                     type: "primary",
                     size: "small",
+                    loading: this.checkBusy,
                     onClick: () => this.saveEdit(row),
                   },
                   "Guardar"
@@ -185,6 +201,15 @@ export default {
         .map((n) => parseInt(n || "0", 10));
       return h * 3600000 + m * 60000;
     },
+    toMin(s) {
+      const [h, m] = String(s)
+        .split(":")
+        .map((n) => parseInt(n || "0", 10));
+      return h * 60 + m;
+    },
+    rangesOverlap(aS, aE, bS, bE) {
+      return Math.max(aS, bS) < Math.min(aE, bE);
+    },
     weekdayLabel(v) {
       const map = {
         LUNES: "Lunes",
@@ -200,7 +225,7 @@ export default {
     async loadCourses() {
       const courses = await CourseService.getAll();
       this.courseOptions = (courses || []).map((c) => ({
-        label: `${c.name} - ${c.parallel}`,
+        label: `${c.name}${c.parallel ? " - " + c.parallel : ""}`,
         value: c.id,
       }));
     },
@@ -213,6 +238,9 @@ export default {
     },
     async onCourseChange() {
       this.editingId = null;
+      this.courseInfo = this.selectedCourse
+        ? await CourseService.getById(this.selectedCourse)
+        : null;
       await this.loadTable();
     },
     async loadTable() {
@@ -241,17 +269,139 @@ export default {
       this.editClassroomId = row.classroomId;
       this.editStartMs = this.hhmmToMs(row.start_time);
       this.editEndMs = this.hhmmToMs(row.end_time);
+      this.checkResult = null;
+      this.deferCheck(row, 0);
     },
     cancelEdit() {
       this.editingId = null;
       this.editClassroomId = null;
       this.editStartMs = null;
       this.editEndMs = null;
+      this.checkResult = null;
+      clearTimeout(this.timer);
+    },
+    deferCheck(row, wait = 300) {
+      clearTimeout(this.timer);
+      this.timer = setTimeout(() => this.checkRow(row), wait);
+    },
+    async checkRow(row) {
+      if (!this.courseInfo || !this.editingId) return;
+      if (
+        this.editClassroomId == null ||
+        this.editStartMs == null ||
+        this.editEndMs == null
+      ) {
+        this.checkResult = null;
+        return;
+      }
+      const st = this.toHHMM(this.editStartMs);
+      const et = this.toHHMM(this.editEndMs);
+      if (this.toMin(et) <= this.toMin(st)) {
+        this.checkResult = { ok: false, issues: ["shift"], suggestions: [] };
+        return;
+      }
+      if (
+        !this.validateAgainstOwnRows(
+          row.weekday,
+          this.editClassroomId,
+          st,
+          et,
+          row.id
+        )
+      ) {
+        this.checkResult = {
+          ok: false,
+          issues: ["classroom"],
+          suggestions: [],
+        };
+        return;
+      }
+
+      const sDate =
+        this.courseInfo.start_date || this.courseInfo.term?.start_date;
+      const eDate =
+        this.courseInfo.end_date ||
+        this.courseInfo.term?.end_date ||
+        this.courseInfo.start_date;
+
+      const payload = {
+        teacherId: this.courseInfo.teacherId,
+        start_date: new Date(sDate).toISOString(),
+        end_date: new Date(eDate).toISOString(),
+        shift: this.courseInfo.shift,
+        checks: [
+          {
+            id: String(this.editingId),
+            weekday: row.weekday,
+            classroomId: this.editClassroomId,
+            start_time: st,
+            end_time: et,
+          },
+        ],
+        // ⬇️ nuevo
+        exclude_course_id: this.courseInfo.id || this.selectedCourse,
+        exclude_schedule_ids: [this.editingId],
+      };
+
+      this.checkBusy = true;
+      try {
+        const res = await CourseService.checkAvailability(payload);
+        const r = Array.isArray(res?.results) ? res.results[0] : null;
+        this.checkResult = r || { ok: true, issues: [], suggestions: [] };
+      } catch {
+        this.checkResult = { ok: false, issues: ["error"], suggestions: [] };
+      } finally {
+        this.checkBusy = false;
+      }
+    },
+    validateAgainstOwnRows(weekday, classroomId, st, et, excludeId) {
+      const sm = this.toMin(st);
+      const em = this.toMin(et);
+      for (const r of this.rows) {
+        if (r.id === excludeId) continue;
+        if (r.weekday !== weekday) continue;
+        if (Number(r.classroomId) !== Number(classroomId)) continue;
+        const rsm = this.toMin(r.start_time);
+        const rem = this.toMin(r.end_time);
+        if (this.rangesOverlap(sm, em, rsm, rem)) return false;
+      }
+      return true;
+    },
+    applySuggestion(s) {
+      this.editStartMs = this.hhmmToMs(s.start_time);
+      this.editEndMs = this.hhmmToMs(s.end_time);
+      const row = this.rows.find((x) => x.id === this.editingId);
+      if (row) this.deferCheck(row, 0);
     },
     async saveEdit(row) {
       if (!this.editingId) return;
       if (this.editEndMs <= this.editStartMs) {
         this.message?.error?.("Rango de horas inválido");
+        return;
+      }
+      if (
+        !this.validateAgainstOwnRows(
+          row.weekday,
+          this.editClassroomId,
+          this.toHHMM(this.editStartMs),
+          this.toHHMM(this.editEndMs),
+          row.id
+        )
+      ) {
+        this.message?.error?.(
+          "Conflicto interno en el curso para esa aula y día"
+        );
+        return;
+      }
+      if (!this.checkResult || !this.checkResult.ok) {
+        const issues = (this.checkResult?.issues || [])
+          .map((x) =>
+            x === "teacher" ? "Docente" : x === "classroom" ? "Aula" : "Turno"
+          )
+          .join(", ");
+        this.message?.error?.(
+          issues ? `No disponible: ${issues}` : "No disponible"
+        );
         return;
       }
       await ScheduleService.update(this.editingId, {

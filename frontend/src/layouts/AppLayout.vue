@@ -159,6 +159,13 @@ import {
   LayersOutline,
   AnalyticsOutline,
 } from "@vicons/ionicons5";
+import { decodeJwt } from "@/utils/jwt";
+import notif from "@/stores/notifications";
+import { connectWithUser } from "@/sockets/socket";
+
+function renderIcon(icon) {
+  return () => h("span", [h(NIcon, null, { default: () => h(icon) })]);
+}
 
 export default {
   name: "AppLayout",
@@ -182,6 +189,7 @@ export default {
   setup() {
     const router = useRouter();
     const route = useRoute();
+
     const user = ref(null);
     const loadingUser = ref(true);
     const collapsed = ref(localStorage.getItem("sidebar_collapsed") === "1");
@@ -198,6 +206,15 @@ export default {
       try {
         const { user: u } = await AuthService.getUser();
         user.value = u;
+        const t = localStorage.getItem("token");
+        if (t) {
+          const p = decodeJwt(t);
+          if (p?.userId) {
+            connectWithUser(p.userId);
+            notif.bindSocket();
+            await notif.loadUnread();
+          }
+        }
       } catch {
         router.push("/login");
       } finally {
@@ -297,6 +314,11 @@ export default {
       key: "/risks",
       icon: renderIcon(AnalyticsOutline),
     };
+    const itemAudit = {
+      label: "Auditoría",
+      key: "/audit",
+      icon: renderIcon(AnalyticsOutline),
+    };
 
     const menuOptions = computed(() => {
       const raw = (user.value?.role?.name || "").toUpperCase();
@@ -324,6 +346,7 @@ export default {
           itemSchedules,
           itemRisks,
           itemReports,
+          itemAudit,
         ];
       if (role === "GERENTE")
         return [
@@ -338,6 +361,7 @@ export default {
           itemSchedules,
           itemRisks,
           itemReports,
+          itemAudit,
         ];
       if (role === "SECRETARÍA")
         return [
@@ -352,6 +376,7 @@ export default {
     });
 
     const currentMenuKey = computed(() => route.path);
+
     function onMenuSelect(key) {
       if (typeof key === "string") {
         router.push(key);
@@ -380,6 +405,7 @@ export default {
       classrooms: "Aulas",
       "grade-policies": "Políticas de Calificaciones",
       holidays: "Feriados Académicos",
+      profile: "Perfil",
     };
 
     const breadcrumbs = computed(() => {
@@ -413,7 +439,7 @@ export default {
     ]);
 
     async function onUserSelect(key) {
-      if (key === "profile") router.push("/home");
+      if (key === "profile") router.push("/profile");
       if (key === "logout") {
         try {
           await AuthService.logout();
@@ -438,8 +464,4 @@ export default {
     };
   },
 };
-
-function renderIcon(icon) {
-  return () => h("span", [h(NIcon, null, { default: () => h(icon) })]);
-}
 </script>

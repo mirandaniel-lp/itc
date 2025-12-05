@@ -6,7 +6,6 @@
           class="flex flex-col md:flex-row md:items-center md:justify-between gap-4"
         >
           <h1 class="text-4xl font-extrabold">Lista de Cursos</h1>
-
           <div class="flex items-center gap-3 w-full md:w-auto">
             <div class="relative w-full md:w-80">
               <input
@@ -23,6 +22,15 @@
               />
             </div>
 
+            <n-select
+              v-model:value="selectedYear"
+              :options="yearOptions"
+              size="large"
+              class="w-full md:w-48"
+              placeholder="Gestión"
+              @update:value="handleYearChange"
+            />
+
             <n-button
               type="primary"
               size="large"
@@ -34,11 +42,9 @@
           </div>
         </div>
 
-        <!-- Content -->
         <div
           class="rounded-2xl border border-[#334155] shadow-[0_6px_25px_rgba(0,0,0,0.4)] bg-[#0b1220]/70 backdrop-blur-sm p-6"
         >
-          <!-- Loading skeleton -->
           <div
             v-if="isLoading"
             class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr"
@@ -50,7 +56,6 @@
             />
           </div>
 
-          <!-- Cards -->
           <div
             v-else
             class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr"
@@ -60,9 +65,7 @@
               :key="c.id"
               class="group rounded-2xl border border-[#334155] bg-[#0f172a]/80 hover:bg-[#111a2e] transition-all duration-300 shadow-[0_4px_18px_rgba(0,0,0,0.35)] overflow-hidden h-full"
             >
-              <!-- Card body aligned with flex -->
               <div class="p-5 flex flex-col h-full min-h-[280px]">
-                <!-- Título y chip -->
                 <div class="flex items-start justify-between gap-3">
                   <div class="min-w-0">
                     <h2 class="text-xl font-extrabold leading-6 line-clamp-2">
@@ -78,7 +81,6 @@
                   </span>
                 </div>
 
-                <!-- Details -->
                 <div class="grid grid-cols-2 gap-3 text-sm mt-4">
                   <div class="flex items-center gap-2 text-gray-300 min-w-0">
                     <n-icon :component="PersonOutline" size="18" />
@@ -122,7 +124,6 @@
                   </div>
                 </div>
 
-                <!-- Actions pinned to bottom -->
                 <div class="mt-auto pt-4 flex justify-end gap-2">
                   <button
                     class="w-24 px-3 py-1.5 rounded-lg text-sm font-bold bg-gradient-to-r from-[#1e3a8a] to-[#2563eb] text-white hover:shadow-[0_0_15px_rgba(37,99,235,0.5)] transition-all"
@@ -157,7 +158,6 @@
             </div>
           </div>
 
-          <!-- Pagination -->
           <div class="flex justify-end mt-6">
             <n-pagination
               v-model:page="currentPage"
@@ -174,7 +174,14 @@
 </template>
 
 <script>
-import { NButton, NIcon, NPagination, NPopconfirm, useMessage } from "naive-ui";
+import {
+  NButton,
+  NIcon,
+  NPagination,
+  NPopconfirm,
+  NSelect,
+  useMessage,
+} from "naive-ui";
 import {
   SearchOutline,
   CalendarOutline,
@@ -187,7 +194,7 @@ import CourseService from "@/services/courseService";
 
 export default {
   name: "ListCoursesView",
-  components: { AppLayout, NButton, NIcon, NPagination, NPopconfirm },
+  components: { AppLayout, NButton, NIcon, NPagination, NPopconfirm, NSelect },
   data() {
     return {
       SearchOutline,
@@ -198,6 +205,8 @@ export default {
       courses: [],
       filteredCourses: [],
       search: "",
+      selectedYear: new Date().getFullYear(),
+      yearOptions: [],
       currentPage: 1,
       itemsPerPage: 9,
       isLoading: false,
@@ -231,7 +240,17 @@ export default {
       try {
         const data = await CourseService.getAll();
         this.courses = data;
-        this.filteredCourses = [...data];
+        const yearsSet = new Set();
+        this.courses.forEach((c) => {
+          const d = c.start_date || c.end_date || null;
+          if (d) yearsSet.add(new Date(d).getFullYear());
+        });
+        const years = Array.from(yearsSet).sort((a, b) => b - a);
+        this.yearOptions = [
+          { label: "Todas", value: "all" },
+          ...years.map((y) => ({ label: String(y), value: y })),
+        ];
+        this.applyFilters();
       } catch {
         this.message?.error?.("Error al cargar cursos.");
       } finally {
@@ -239,11 +258,25 @@ export default {
       }
     },
     handleSearch() {
+      this.applyFilters();
+    },
+    handleYearChange() {
+      this.applyFilters();
+    },
+    applyFilters() {
       const q = this.search.trim().toLowerCase();
+      const y = this.selectedYear;
       this.filteredCourses = this.courses.filter((c) => {
         const name = (c.name || "").toLowerCase();
         const parallel = (c.parallel || "").toLowerCase();
-        return name.includes(q) || parallel.includes(q);
+        const matchText = !q || name.includes(q) || parallel.includes(q);
+        const yr = c.start_date
+          ? new Date(c.start_date).getFullYear()
+          : c.end_date
+          ? new Date(c.end_date).getFullYear()
+          : null;
+        const matchYear = y === "all" ? true : yr === y;
+        return matchText && matchYear;
       });
       this.currentPage = 1;
     },
